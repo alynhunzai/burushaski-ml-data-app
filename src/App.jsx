@@ -3,7 +3,6 @@ import {
   Mic, Type, StopCircle, Loader2, Check, AlertCircle, RefreshCw, 
   User, CheckSquare, ThumbsUp, ThumbsDown, HelpCircle, Save, Info, ShieldAlert, Database
 } from 'lucide-react';
-// UPDATE THIS IMPORT LINE:
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -312,8 +311,11 @@ const ContributionCounter = ({ count }) => {
 
   useEffect(() => {
     if (count > 0) {
-      setAnimate(true);
-      const timer = setTimeout(() => setAnimate(false), 450);
+      const timer = setTimeout(() => {
+        setAnimate(true);
+        const resetTimer = setTimeout(() => setAnimate(false), 450);
+        return () => clearTimeout(resetTimer);
+      }, 0);
       return () => clearTimeout(timer);
     }
   }, [count]);
@@ -907,11 +909,11 @@ const ValidationForm = ({ db, storage, userId }) => {
   // IMPROVED AND SMARTER FETCH LOGIC
   
   const fetchContribution = async () => {
-  setLoading(true);
-  setMessage(null);
-  setContribution(null);
-  setVoted(false);
-  setStatus('idle');
+    setLoading(true);
+    setMessage(null);
+    setContribution(null);
+    setVoted(false);
+    setStatus('idle');
 
     try {
       const type = Math.random() > 0.5 ? 'text' : 'audio';
@@ -976,14 +978,14 @@ const querySnapshot = await getDocs(q);
 
   useEffect(() => {
     fetchContribution();
-  }, []);
+  }, [db, userId]);
 
   // ✅ ENHANCED handleVote with validation count increment
   const handleVote = async (vote) => {
-  if (!contribution || voted) return;
+    if (!contribution || voted) return;
 
-  setVoted(true);
-  setStatus('submitting');
+    setVoted(true);
+    setStatus('submitting');
   
   try {
     // ✅ 1. Save validation
