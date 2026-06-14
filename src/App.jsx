@@ -1048,8 +1048,15 @@ const ValidationForm = ({ db, storage, userId }) => {
         contribution.id
       );
 
+      const currentCount = contribution.data.validationCount || 0;
+      const newCount = currentCount + 1;
+
+      // ✅ threshold
+      const MAX_VALIDATIONS = 3;
+
       await updateDoc(contributionRef, {
-        validationCount: increment(1)
+        validationCount: increment(1),
+        validated: newCount >= MAX_VALIDATIONS // ✅ NEW
       });
 
       // ✅ existing UI logic
