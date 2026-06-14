@@ -450,6 +450,7 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
         benchmarkId: mode === 'prompt' ? (currentPrompt?.id || 'unknown') : 'none',
         createdAt: Timestamp.now(),
         validationCount: 0,
+        validated: false,
       });
 
       await setDoc(profileDocRef, { count: increment(1) }, { merge: true });
@@ -698,6 +699,7 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
         benchmarkId: mode === 'prompt' ? (currentPrompt?.id || 'unknown') : 'none',
         createdAt: Timestamp.now(),
         validationCount: 0,
+        validated: false,
       });
 
       await setDoc(profileDocRef, { count: increment(1) }, { merge: true });
