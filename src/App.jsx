@@ -1342,7 +1342,7 @@ export default function App() {
       setStorage(storageInstance);
 
       // 1. Check Global Daily Quota immediately
-      const today = new Date().toISOString().split('T');
+      const today = new Date().toISOString().split('T')[0];
       const checkQuota = async () => {
         try {
           const statsRef = doc(dbInstance, `artifacts/${appId}/system`, 'daily_stats');
