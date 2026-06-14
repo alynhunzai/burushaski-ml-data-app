@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   Mic, Type, StopCircle, Loader2, Check, AlertCircle, RefreshCw,
   User, CheckSquare, ThumbsUp, ThumbsDown, HelpCircle, Save, Info, ShieldAlert, Database
@@ -407,11 +407,11 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
     setCurrentPrompt(newPrompt);
   }, [subSource, activeBenchmarkData, currentPrompt]);
 
-  // Load first prompt
   useEffect(() => {
-    if (activeBenchmarkData) {
-      getNewPrompt(subSource);
-    }
+    if (!activeBenchmarkData) return
+    const promptSource = subSource;
+    const timer = window.setTimeout(() => getNewPrompt(promptSource), 0);
+    return () => window.clearTimeout(timer);
   }, [subSource, activeBenchmarkData, getNewPrompt]);
 
   const handleSubmit = async (e) => {
@@ -480,8 +480,8 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
           type="button"
           onClick={() => { setMode('prompt'); setMessage(''); setStatus('idle'); }}
           className={`flex-1 py-1.5 px-3 text-sm font-semibold rounded-lg transition-all transform hover:scale-[1.02] active:scale-95 ${mode === 'prompt'
-              ? 'bg-white text-blue-700 shadow-xs'
-              : 'text-slate-500 hover:text-slate-800'
+            ? 'bg-white text-blue-700 shadow-xs'
+            : 'text-slate-500 hover:text-slate-800'
             }`}
         >
           Benchmark Task
@@ -490,8 +490,8 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
           type="button"
           onClick={() => { setMode('custom'); setMessage(''); setStatus('idle'); }}
           className={`flex-1 py-1.5 px-3 text-sm font-semibold rounded-lg transition-all transform hover:scale-[1.02] active:scale-95 ${mode === 'custom'
-              ? 'bg-white text-blue-700 shadow-xs'
-              : 'text-slate-500 hover:text-slate-800'
+            ? 'bg-white text-blue-700 shadow-xs'
+            : 'text-slate-500 hover:text-slate-800'
             }`}
         >
           My Own Text
@@ -505,8 +505,8 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
             type="button"
             onClick={() => setSubSource('tatoeba')}
             className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${subSource === 'tatoeba'
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
+              ? 'bg-blue-600 text-white border-blue-600'
+              : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
               }`}
           >
             Tatoeba (Daily Spoken)
@@ -515,8 +515,8 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
             type="button"
             onClick={() => setSubSource('flores')}
             className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${subSource === 'flores'
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
+              ? 'bg-blue-600 text-white border-blue-600'
+              : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
               }`}
           >
             FLORES-200 (Complex/News)
@@ -592,9 +592,10 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
   }, [subSource, activeBenchmarkData, currentPrompt]);
 
   useEffect(() => {
-    if (activeBenchmarkData) {
-      getNewPrompt(subSource);
-    }
+    if (!activeBenchmarkData) return;
+    const promptSource = subSource;
+    const timer = window.setTimeout(() => getNewPrompt(promptSource), 0);
+    return () => window.clearTimeout(timer);
   }, [subSource, activeBenchmarkData, getNewPrompt]);
 
   useEffect(() => {
@@ -732,8 +733,8 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
           type="button"
           onClick={() => { setMode('prompt'); setMessage(''); setStatus('idle'); }}
           className={`flex-1 py-1.5 px-3 text-sm font-semibold rounded-lg transition-all transform hover:scale-[1.02] active:scale-95 ${mode === 'prompt'
-              ? 'bg-white text-blue-700 shadow-xs'
-              : 'text-slate-500 hover:text-slate-800'
+            ? 'bg-white text-blue-700 shadow-xs'
+            : 'text-slate-500 hover:text-slate-800'
             }`}
         >
           Benchmark Task
@@ -742,8 +743,8 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
           type="button"
           onClick={() => { setMode('custom'); setMessage(''); setStatus('idle'); }}
           className={`flex-1 py-1.5 px-3 text-sm font-semibold rounded-lg transition-all transform hover:scale-[1.02] active:scale-95 ${mode === 'custom'
-              ? 'bg-white text-blue-700 shadow-xs'
-              : 'text-slate-500 hover:text-slate-800'
+            ? 'bg-white text-blue-700 shadow-xs'
+            : 'text-slate-500 hover:text-slate-800'
             }`}
         >
           My Own Speech
@@ -757,8 +758,8 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
             type="button"
             onClick={() => setSubSource('tatoeba')}
             className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${subSource === 'tatoeba'
-                ? 'bg-emerald-600 text-white border-emerald-600'
-                : 'bg-white text-emerald-600 border-emerald-200 hover:bg-emerald-50'
+              ? 'bg-emerald-600 text-white border-emerald-600'
+              : 'bg-white text-emerald-600 border-emerald-200 hover:bg-emerald-50'
               }`}
           >
             Tatoeba (Spoken)
@@ -767,8 +768,8 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
             type="button"
             onClick={() => setSubSource('flores')}
             className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${subSource === 'flores'
-                ? 'bg-emerald-600 text-white border-emerald-600'
-                : 'bg-white text-emerald-600 border-emerald-200 hover:bg-emerald-50'
+              ? 'bg-emerald-600 text-white border-emerald-600'
+              : 'bg-white text-emerald-600 border-emerald-200 hover:bg-emerald-50'
               }`}
           >
             FLORES-200 (News)
@@ -915,93 +916,95 @@ const ValidationForm = ({ db, storage, userId }) => {
   const [voted, setVoted] = useState(false);
 
   // IMPROVED AND SMARTER FETCH LOGIC
-  const fetchContribution = async () => {
-  setLoading(true);
-  setMessage(null);
-  setContribution(null);
-  setVoted(false);
-  setStatus('idle');
+  const fetchContribution = useCallback(async () => {
+    setLoading(true);
+    setMessage(null);
+    setContribution(null);
+    setVoted(false);
+    setStatus('idle');
 
-  try {
-    const types = ['text', 'audio'];
-    let allDocs = [];
+    try {
+      const types = ['text', 'audio'];
+      let allDocs = [];
 
-    for (const type of types) {
-      const collectionName =
-        type === 'text' ? 'text_contributions' : 'audio_contributions';
+      for (const type of types) {
+        const collectionName =
+          type === 'text' ? 'text_contributions' : 'audio_contributions';
 
-      const collectionRef = collection(
+        const collectionRef = collection(
+          db,
+          `artifacts/${appId}/public/data/${collectionName}`
+        );
+
+        const q = query(
+          collectionRef,
+          where("userId", "!=", userId),
+          where("validated", "==", false), // ✅ NEW
+          orderBy("validationCount", "asc"),
+          limit(5)
+        );
+
+        const snapshot = await getDocs(q);
+
+        snapshot.docs.forEach(doc => {
+          allDocs.push({ doc, type });
+        });
+      }
+
+      if (allDocs.length === 0) {
+        setMessage("No new contributions available.");
+        setLoading(false);
+        return;
+      }
+
+      // ✅ FIX: correct validations path
+      const valRef = collection(
         db,
-        `artifacts/${appId}/public/data/${collectionName}`
+        `artifacts/${appId}/public/data/validations`
       );
 
-      const q = query(
-        collectionRef,
-        where("userId", "!=", userId),
-        where("validated", "==", false), // ✅ NEW
-        orderBy("validationCount", "asc"),
-        limit(5)
+      const valQuery = query(
+        valRef,
+        where("validatorId", "==", userId),
+        limit(50)
       );
 
-      const snapshot = await getDocs(q);
+      const valSnapshot = await getDocs(valQuery);
 
-      snapshot.docs.forEach(doc => {
-        allDocs.push({ doc, type });
+      const validatedIds = valSnapshot.docs.map(
+        doc => doc.data().contributionId
+      );
+
+      // ✅ filter already seen
+      const unseenDocs = allDocs.filter(item =>
+        !validatedIds.includes(item.doc.id)
+      );
+
+      const pool = unseenDocs.length ? unseenDocs : allDocs;
+
+      const randomItem =
+        pool[Math.floor(Math.random() * pool.length)];
+
+      setContribution({
+        id: randomItem.doc.id,
+        type: randomItem.type,
+        data: randomItem.doc.data()
       });
-    }
 
-    if (allDocs.length === 0) {
-      setMessage("No new contributions available.");
       setLoading(false);
-      return;
+
+    } catch (err) {
+      console.error("Error fetching contribution:", err);
+      setStatus('error');
+      setMessage(err.message || "Failed to load data.");
+      setLoading(false);
     }
-
-    // ✅ FIX: correct validations path
-    const valRef = collection(
-      db,
-      `artifacts/${appId}/public/data/validations`
-    );
-
-    const valQuery = query(
-      valRef,
-      where("validatorId", "==", userId),
-      limit(50)
-    );
-
-    const valSnapshot = await getDocs(valQuery);
-
-    const validatedIds = valSnapshot.docs.map(
-      doc => doc.data().contributionId
-    );
-
-    // ✅ filter already seen
-    const unseenDocs = allDocs.filter(item =>
-      !validatedIds.includes(item.doc.id)
-    );
-
-    const pool = unseenDocs.length ? unseenDocs : allDocs;
-
-    const randomItem =
-      pool[Math.floor(Math.random() * pool.length)];
-
-    setContribution({
-      id: randomItem.doc.id,
-      type: randomItem.type,
-      data: randomItem.doc.data()
-    });
-
-    setLoading(false);
-
-  } catch (err) {
-    console.error("Error fetching contribution:", err);
-    setStatus('error');
-    setMessage(err.message || "Failed to load data.");
-    setLoading(false);
-  }
-};
+  }, [db, userId]);
 
   useEffect(() => {
-    fetchContribution();
+    if (!db || !userId) return;
+    const timer = window.setTimeout(() => fetchContribution(), 0);
+    return () => window.clearTimeout(timer);
   }, [db, userId, fetchContribution]);
 
   // ✅ ENHANCED handleVote with validation count increment
@@ -1029,6 +1032,8 @@ const ValidationForm = ({ db, storage, userId }) => {
       if (!existingSnapshot.empty) {
         throw new Error("You have already validated this item.");
       }
+
+
 
       await addDoc(collectionRef, {
         contributionId: contribution.id,
@@ -1318,9 +1323,6 @@ const ProfileForm = ({ profileDocRef }) => {
 // --- Updated App Orchestration Level ---
 export default function App() {
   const [activeTab, setActiveTab] = useState('text');
-  const [auth, setAuth] = useState(null);
-  const [db, setDb] = useState(null);
-  const [storage, setStorage] = useState(null);
   const [userId, setUserId] = useState(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [contributionCount, setContributionCount] = useState(0);
@@ -1330,47 +1332,65 @@ export default function App() {
 
   const [benchmarkCatalog, setBenchmarkCatalog] = useState(FALLBACK_BENCHMARKS);
 
+  // Initialize Firebase clients once (avoid setState inside effects)
+  const firebaseApp = useMemo(() => {
+    try {
+      return !getApps().length ? initializeApp(firebaseConfig) : getApp();
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const auth = useMemo(() => (firebaseApp ? getAuth(firebaseApp) : null), [firebaseApp]);
+  const db = useMemo(() => (firebaseApp ? getFirestore(firebaseApp) : null), [firebaseApp]);
+  const storage = useMemo(() => (firebaseApp ? getStorage(firebaseApp) : null), [firebaseApp]);
+
   useEffect(() => {
     let unsubProfile = () => { };
-    try {
-      const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-      const authInstance = getAuth(app);
-      const dbInstance = getFirestore(app);
-      const storageInstance = getStorage(app);
-      setAuth(authInstance);
-      setDb(dbInstance);
-      setStorage(storageInstance);
+    let unsubAuth = () => { };
 
-      // 1. Check Global Daily Quota immediately
-      const today = new Date().toISOString().split('T')[0];
-      const checkQuota = async () => {
+    if (!firebaseApp) return;
+
+    const init = async () => {
+      try {
+        const authInstance = getAuth(firebaseApp);
+        const dbInstance = getFirestore(firebaseApp);
+        getStorage(firebaseApp);
+
+        // 1. Check Global Daily Quota immediately
+        const today = new Date().toISOString().split('T')[0];
         try {
           const statsRef = doc(dbInstance, `artifacts/${appId}/system`, 'daily_stats');
           const statsSnap = await getDoc(statsRef);
           if (statsSnap.exists() && statsSnap.data().date === today && statsSnap.data().writes >= DAILY_WRITE_LIMIT) {
             setIsQuotaMet(true);
           }
-        } catch (_e) { /* ignore */ }
-      };
-      checkQuota();
+        } catch (err) { console.debug('quota check failed', err); }
 
-      const unsubscribeAuth = onAuthStateChanged(authInstance, async (user) => {
-        if (user) {
-          setUserId(user.uid);
-          const userProfileDocRef = doc(dbInstance, `artifacts/${appId}/users/${user.uid}/profile`, 'user_data');
-          setProfileDocRef(userProfileDocRef);
-          unsubProfile = onSnapshot(userProfileDocRef, (docSnap) => {
-            setContributionCount(docSnap.exists() ? docSnap.data().count || 0 : 0);
-          });
-          setIsAuthReady(true);
-        } else {
-          try { await signInAnonymously(authInstance); }
-          catch (authError) { setHandshakeError(authError.message); setIsAuthReady(true); }
-        }
-      });
-      return () => { unsubscribeAuth(); unsubProfile(); };
-    } catch (e) { setHandshakeError(e.message); setIsAuthReady(true); }
-  }, []);
+        unsubAuth = onAuthStateChanged(authInstance, async (user) => {
+          if (user) {
+            setUserId(user.uid);
+            const userProfileDocRef = doc(dbInstance, `artifacts/${appId}/users/${user.uid}/profile`, 'user_data');
+            setProfileDocRef(userProfileDocRef);
+            unsubProfile = onSnapshot(userProfileDocRef, (docSnap) => {
+              setContributionCount(docSnap.exists() ? docSnap.data().count || 0 : 0);
+            });
+            setIsAuthReady(true);
+          } else {
+            try { await signInAnonymously(authInstance); }
+            catch (authError) { setHandshakeError(authError.message); setIsAuthReady(true); }
+          }
+        });
+      } catch (err) {
+        setHandshakeError(err.message);
+        setIsAuthReady(true);
+      }
+    };
+
+    init();
+
+    return () => { try { unsubAuth(); } catch (cleanupErr) { console.debug('cleanup auth error', cleanupErr); }; try { unsubProfile(); } catch (cleanupErr) { console.debug('cleanup profile error', cleanupErr); } };
+  }, [firebaseApp]);
 
   // Phase 2: Cached Dynamic Catalog Extraction (SAVES 50,000 reads!)
   useEffect(() => {
@@ -1412,7 +1432,7 @@ export default function App() {
           localStorage.setItem(cacheKey, JSON.stringify(newCatalog));
           localStorage.setItem(`${cacheKey}_time`, Date.now().toString());
         }
-      } catch (_fetchError) { console.warn("Using built-in presets."); }
+      } catch { console.warn("Using built-in presets."); }
     };
     fetchBenchmarkSentences();
   }, [isAuthReady, db, userId]);
