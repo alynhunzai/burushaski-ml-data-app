@@ -1,18 +1,17 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Mic, Type, StopCircle, Loader2, Check, AlertCircle, RefreshCw, 
+import { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  Mic, Type, StopCircle, Loader2, Check, AlertCircle, RefreshCw,
   User, CheckSquare, ThumbsUp, ThumbsDown, HelpCircle, Save, Info, ShieldAlert, Database
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { 
-  getAuth, 
-  signInAnonymously, 
-  signInWithCustomToken, 
+import {
+  getAuth,
+  signInAnonymously,
   onAuthStateChanged
 } from 'firebase/auth';
-import { 
-  getFirestore, 
-  collection, 
+import {
+  getFirestore,
+  collection,
   addDoc,
   Timestamp,
   doc,
@@ -27,9 +26,9 @@ import {
   orderBy,
   updateDoc
 } from 'firebase/firestore';
-import { 
-  getStorage, 
-  ref, 
+import {
+  getStorage,
+  ref,
   uploadBytes,
   getDownloadURL
 } from 'firebase/storage';
@@ -46,9 +45,10 @@ const firebaseConfig = {
 };
 
 const appId = "burushaski-translation-hub";
+const DAILY_WRITE_LIMIT = 18000; // A safe buffer below the no-cost daily quota from Firestore
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// const app = initializeApp(firebaseConfig);
 
 // --- Curated Standardized Benchmark Fallbacks (Used if Firestore is empty) ---
 const FALLBACK_BENCHMARKS = {
@@ -95,10 +95,9 @@ const TabButton = ({ children, onClick, isActive }) => (
       transition-all duration-300 ease-in-out transform
       hover:scale-[1.02] active:scale-[0.98]
       focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
-      ${
-        isActive
-          ? 'border-blue-600 text-blue-700 bg-blue-50/30'
-          : 'border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300'
+      ${isActive
+        ? 'border-blue-600 text-blue-700 bg-blue-50/30'
+        : 'border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300'
       }
     `}
   >
@@ -166,10 +165,9 @@ const DialectSelector = ({ selected, onChange }) => (
           className={`
             flex items-center gap-3 p-4 border rounded-xl cursor-pointer select-none
             transition-all duration-300 ease-out shadow-xs transform hover:-translate-y-0.5 active:translate-y-0
-            ${
-              selected === dialect.toLowerCase()
-                ? 'bg-blue-50 border-blue-500 ring-4 ring-blue-100/50 scale-[1.01]'
-                : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs'
+            ${selected === dialect.toLowerCase()
+              ? 'bg-blue-50 border-blue-500 ring-4 ring-blue-100/50 scale-[1.01]'
+              : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs'
             }
           `}
         >
@@ -240,6 +238,23 @@ const GlobalLoader = () => (
     <p className="text-sm text-slate-400 mt-2 max-w-xs text-center leading-relaxed">
       Performing secure authentication handshake with Firebase servers...
     </p>
+  </div>
+);
+
+const QuotaReachedScreen = () => (
+  <div className="min-h-screen w-full flex flex-col justify-center items-center bg-slate-50 px-4 py-8 font-sans text-center">
+    <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-slate-200 p-8 space-y-6 animate-popIn">
+      <div className="mx-auto w-16 h-16 bg-blue-50 border border-blue-200 rounded-full flex items-center justify-center text-blue-600">
+        <Lock className="w-8 h-8" />
+      </div>
+      <h2 className="text-2xl font-extrabold text-slate-800">Daily Target Reached!</h2>
+      <p className="text-slate-600 leading-relaxed">
+        Wow! Our community has submitted enough linguistic data for today to keep our researchers busy. To manage server costs, we pause collections once our daily milestone is hit.
+      </p>
+      <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+        <p className="text-emerald-800 font-bold text-sm">Please come back tomorrow to submit more translations.</p>
+      </div>
+    </div>
   </div>
 );
 
@@ -335,20 +350,19 @@ const AudioPlayer = ({ storage, storagePath }) => {
   useEffect(() => {
     if (!storage || !storagePath) return;
 
-    setLoading(true);
-    setError(null);
     const audioRef = ref(storage, storagePath);
-    
-    getDownloadURL(audioRef)
-      .then((url) => {
+
+    (async () => {
+      try {
+        const url = await getDownloadURL(audioRef);
         setAudioUrl(url);
         setLoading(false);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("Error getting download URL:", err);
         setError("Could not load audio file.");
         setLoading(false);
-      });
+      }
+    })();
   }, [storage, storagePath]);
 
   if (loading) {
@@ -387,18 +401,18 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
   const [status, setStatus] = useState('idle'); // 'idle', 'submitting', 'success', 'error'
   const [message, setMessage] = useState('');
 
-  const getNewPrompt = (targetSource = subSource) => {
+  const getNewPrompt = useCallback((targetSource = subSource) => {
     const list = activeBenchmarkData[targetSource] || FALLBACK_BENCHMARKS[targetSource];
     const newPrompt = getRandomPrompt(list, currentPrompt);
     setCurrentPrompt(newPrompt);
-  };
+  }, [subSource, activeBenchmarkData, currentPrompt]);
 
   // Load first prompt
   useEffect(() => {
     if (activeBenchmarkData) {
       getNewPrompt(subSource);
     }
-  }, [subSource, activeBenchmarkData]);
+  }, [subSource, activeBenchmarkData, getNewPrompt]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -425,7 +439,7 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
     try {
       const collectionPath = `artifacts/${appId}/public/data/text_contributions`;
       const collectionRef = collection(db, collectionPath);
-      
+
       await addDoc(collectionRef, {
         promptEnglish: englishText,
         translationBurushaski: burushaskiText,
@@ -464,22 +478,20 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
         <button
           type="button"
           onClick={() => { setMode('prompt'); setMessage(''); setStatus('idle'); }}
-          className={`flex-1 py-1.5 px-3 text-sm font-semibold rounded-lg transition-all transform hover:scale-[1.02] active:scale-95 ${
-            mode === 'prompt'
+          className={`flex-1 py-1.5 px-3 text-sm font-semibold rounded-lg transition-all transform hover:scale-[1.02] active:scale-95 ${mode === 'prompt'
               ? 'bg-white text-blue-700 shadow-xs'
               : 'text-slate-500 hover:text-slate-800'
-          }`}
+            }`}
         >
           Benchmark Task
         </button>
         <button
           type="button"
           onClick={() => { setMode('custom'); setMessage(''); setStatus('idle'); }}
-          className={`flex-1 py-1.5 px-3 text-sm font-semibold rounded-lg transition-all transform hover:scale-[1.02] active:scale-95 ${
-            mode === 'custom'
+          className={`flex-1 py-1.5 px-3 text-sm font-semibold rounded-lg transition-all transform hover:scale-[1.02] active:scale-95 ${mode === 'custom'
               ? 'bg-white text-blue-700 shadow-xs'
               : 'text-slate-500 hover:text-slate-800'
-          }`}
+            }`}
         >
           My Own Text
         </button>
@@ -491,22 +503,20 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
           <button
             type="button"
             onClick={() => setSubSource('tatoeba')}
-            className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${
-              subSource === 'tatoeba'
+            className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${subSource === 'tatoeba'
                 ? 'bg-blue-600 text-white border-blue-600'
                 : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
-            }`}
+              }`}
           >
             Tatoeba (Daily Spoken)
           </button>
           <button
             type="button"
             onClick={() => setSubSource('flores')}
-            className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${
-              subSource === 'flores'
+            className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${subSource === 'flores'
                 ? 'bg-blue-600 text-white border-blue-600'
                 : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
-            }`}
+              }`}
           >
             FLORES-200 (Complex/News)
           </button>
@@ -561,30 +571,30 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
   const [mode, setMode] = useState('prompt'); // 'prompt' or 'custom'
   const [subSource, setSubSource] = useState('tatoeba'); // 'flores' or 'tatoeba'
   const [currentPrompt, setCurrentPrompt] = useState(null);
-  
+
   const [customEnglish, setCustomEnglish] = useState('');
   const [burushaskiText, setBurushaskiText] = useState('');
   const [dialect, setDialect] = useState('hunza');
-  const [status, setStatus] = useState('idle'); 
+  const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
-  
-  const [recordingState, setRecordingState] = useState('idle'); 
+
+  const [recordingState, setRecordingState] = useState('idle');
   const [audioURL, setAudioURL] = useState(null);
   const [audioBlob, setAudioBlob] = useState(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
-  const getNewPrompt = (targetSource = subSource) => {
+  const getNewPrompt = useCallback((targetSource = subSource) => {
     const list = activeBenchmarkData[targetSource] || FALLBACK_BENCHMARKS[targetSource];
     const newPrompt = getRandomPrompt(list, currentPrompt);
     setCurrentPrompt(newPrompt);
-  };
+  }, [subSource, activeBenchmarkData, currentPrompt]);
 
   useEffect(() => {
     if (activeBenchmarkData) {
       getNewPrompt(subSource);
     }
-  }, [subSource, activeBenchmarkData]);
+  }, [subSource, activeBenchmarkData, getNewPrompt]);
 
   useEffect(() => {
     return () => {
@@ -689,7 +699,7 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
         createdAt: Timestamp.now(),
         validationCount: 0,
       });
-      
+
       await setDoc(profileDocRef, { count: increment(1) }, { merge: true });
 
       setStatus('success');
@@ -719,22 +729,20 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
         <button
           type="button"
           onClick={() => { setMode('prompt'); setMessage(''); setStatus('idle'); }}
-          className={`flex-1 py-1.5 px-3 text-sm font-semibold rounded-lg transition-all transform hover:scale-[1.02] active:scale-95 ${
-            mode === 'prompt'
+          className={`flex-1 py-1.5 px-3 text-sm font-semibold rounded-lg transition-all transform hover:scale-[1.02] active:scale-95 ${mode === 'prompt'
               ? 'bg-white text-blue-700 shadow-xs'
               : 'text-slate-500 hover:text-slate-800'
-          }`}
+            }`}
         >
           Benchmark Task
         </button>
         <button
           type="button"
           onClick={() => { setMode('custom'); setMessage(''); setStatus('idle'); }}
-          className={`flex-1 py-1.5 px-3 text-sm font-semibold rounded-lg transition-all transform hover:scale-[1.02] active:scale-95 ${
-            mode === 'custom'
+          className={`flex-1 py-1.5 px-3 text-sm font-semibold rounded-lg transition-all transform hover:scale-[1.02] active:scale-95 ${mode === 'custom'
               ? 'bg-white text-blue-700 shadow-xs'
               : 'text-slate-500 hover:text-slate-800'
-          }`}
+            }`}
         >
           My Own Speech
         </button>
@@ -746,22 +754,20 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
           <button
             type="button"
             onClick={() => setSubSource('tatoeba')}
-            className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${
-              subSource === 'tatoeba'
+            className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${subSource === 'tatoeba'
                 ? 'bg-emerald-600 text-white border-emerald-600'
                 : 'bg-white text-emerald-600 border-emerald-200 hover:bg-emerald-50'
-            }`}
+              }`}
           >
             Tatoeba (Spoken)
           </button>
           <button
             type="button"
             onClick={() => setSubSource('flores')}
-            className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${
-              subSource === 'flores'
+            className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${subSource === 'flores'
                 ? 'bg-emerald-600 text-white border-emerald-600'
                 : 'bg-white text-emerald-600 border-emerald-200 hover:bg-emerald-50'
-            }`}
+              }`}
           >
             FLORES-200 (News)
           </button>
@@ -769,7 +775,7 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
       )}
 
       <form onSubmit={handleSubmit} className="space-y-8">
-        
+
         {/* Source Definition */}
         <div className="space-y-4">
           {mode === 'prompt' ? (
@@ -825,7 +831,7 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
           <p className="text-sm font-medium text-slate-700 mt-2 text-center max-w-sm">
             Ready? Hit record and simply read your Burushaski text from Step 1 aloud.
           </p>
-          
+
           <div className="relative flex items-center justify-center my-2">
             {recordingState === 'recording' && (
               <>
@@ -885,7 +891,7 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
             </div>
           )}
         </div>
-        
+
         <DialectSelector selected={dialect} onChange={setDialect} />
         <StatusMessage status={status} message={message} />
         <SubmitButton status={status} icon={Check}>
@@ -907,78 +913,94 @@ const ValidationForm = ({ db, storage, userId }) => {
   const [voted, setVoted] = useState(false);
 
   // IMPROVED AND SMARTER FETCH LOGIC
-  
   const fetchContribution = async () => {
-    setLoading(true);
-    setMessage(null);
-    setContribution(null);
-    setVoted(false);
-    setStatus('idle');
+  setLoading(true);
+  setMessage(null);
+  setContribution(null);
+  setVoted(false);
+  setStatus('idle');
 
-    try {
-      const type = Math.random() > 0.5 ? 'text' : 'audio';
-      const collectionName = type === 'text' 
-        ? 'text_contributions' 
-        : 'audio_contributions';
+  try {
+    const types = ['text', 'audio'];
+    let allDocs = [];
 
-      const collectionPath = `artifacts/${appId}/public/data/${collectionName}`;
-      const collectionRef = collection(db, collectionPath);
+    for (const type of types) {
+      const collectionName =
+        type === 'text' ? 'text_contributions' : 'audio_contributions';
 
-      // ✅ smart query
+      const collectionRef = collection(
+        db,
+        `artifacts/${appId}/public/data/${collectionName}`
+      );
+
       const q = query(
         collectionRef,
         where("userId", "!=", userId),
+        where("validated", "==", false), // ✅ NEW
         orderBy("validationCount", "asc"),
-        limit(10)
+        limit(5)
       );
 
-const querySnapshot = await getDocs(q);
+      const snapshot = await getDocs(q);
 
-      if (querySnapshot.empty) {
-        setLoading(false);
-        setStatus('idle');
-        setMessage("No new contributions available.");
-        return;
-      }
-
-      // ✅ get already validated IDs
-      const valRef = collection(db, "validations");
-      const valQuery = query(valRef, where("userId", "==", userId));
-      const valSnapshot = await getDocs(valQuery);
-
-      const validatedIds = valSnapshot.docs.map(doc => doc.data().contributionId);
-
-      const docs = querySnapshot.docs;
-
-      // ✅ filter seen
-      const unseenDocs = docs.filter(doc => 
-        !validatedIds.includes(doc.id)
-      );
-
-      const pool = unseenDocs.length ? unseenDocs : docs;
-
-      // ✅ pick randomly from low-validation pool
-      const randomDoc = pool[Math.floor(Math.random() * pool.length)];
-
-      setContribution({
-        id: randomDoc.id,
-        type: type,
-        data: randomDoc.data()
+      snapshot.docs.forEach(doc => {
+        allDocs.push({ doc, type });
       });
-
-      setLoading(false);
-
-    } catch (err) {
-      console.error("Error fetching contribution for validation:", err);
-      setLoading(false);
-      setStatus('error');
-      setMessage("Could not load a contribution.");
     }
-  };
+
+    if (allDocs.length === 0) {
+      setMessage("No new contributions available.");
+      setLoading(false);
+      return;
+    }
+
+    // ✅ FIX: correct validations path
+    const valRef = collection(
+      db,
+      `artifacts/${appId}/public/data/validations`
+    );
+
+    const valQuery = query(
+      valRef,
+      where("validatorId", "==", userId),
+      limit(50)
+    );
+
+    const valSnapshot = await getDocs(valQuery);
+
+    const validatedIds = valSnapshot.docs.map(
+      doc => doc.data().contributionId
+    );
+
+    // ✅ filter already seen
+    const unseenDocs = allDocs.filter(item =>
+      !validatedIds.includes(item.doc.id)
+    );
+
+    const pool = unseenDocs.length ? unseenDocs : allDocs;
+
+    const randomItem =
+      pool[Math.floor(Math.random() * pool.length)];
+
+    setContribution({
+      id: randomItem.doc.id,
+      type: randomItem.type,
+      data: randomItem.doc.data()
+    });
+
+    setLoading(false);
+
+  } catch (err) {
+    console.error("Error fetching contribution:", err);
+    setStatus('error');
+    setMessage(err.message || "Failed to load data.");
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchContribution();
-  }, [db, userId]);
+  }, [db, userId, fetchContribution]);
 
   // ✅ ENHANCED handleVote with validation count increment
   const handleVote = async (vote) => {
@@ -986,99 +1008,64 @@ const querySnapshot = await getDocs(q);
 
     setVoted(true);
     setStatus('submitting');
-  
-  try {
-    // ✅ 1. Save validation
-    const collectionPath = `artifacts/${appId}/public/data/validations`;
-    const collectionRef = collection(db, collectionPath);
-    
-    await addDoc(collectionRef, {
-      contributionId: contribution.id,
-      contributionType: contribution.type,
-      validatorId: userId,
-      vote: vote, 
-      validatedAt: Timestamp.now(),
-    });
 
-    // ✅ 2. NEW: increment validationCount
-    const contributionCollection =
-      contribution.type === "text"
-        ? "text_contributions"
-        : "audio_contributions";
+    try {
+      // ✅ 1. Save validation
+      const collectionPath = `artifacts/${appId}/public/data/validations`;
+      const collectionRef = collection(db, collectionPath);
 
-    const contributionRef = doc(
-      db,
-      `artifacts/${appId}/public/data/${contributionCollection}`,
-      contribution.id
-    );
+      await addDoc(collectionRef, {
+        contributionId: contribution.id,
+        contributionType: contribution.type,
+        validatorId: userId,
+        vote: vote,
+        validatedAt: Timestamp.now(),
+      });
 
-    await updateDoc(contributionRef, {
-      validationCount: increment(1)
-    });
+      // ✅ 2. NEW: increment validationCount
+      const contributionCollection =
+        contribution.type === "text"
+          ? "text_contributions"
+          : "audio_contributions";
 
-    // ✅ existing UI logic
-    setStatus('success');
-    setMessage("Vote recorded! Loading next contribution...");
+      const contributionRef = doc(
+        db,
+        `artifacts/${appId}/public/data/${contributionCollection}`,
+        contribution.id
+      );
 
-    setTimeout(() => {
-      fetchContribution();
-    }, 2000);
+      await updateDoc(contributionRef, {
+        validationCount: increment(1)
+      });
 
-  } catch (err) {
-    console.error("Error submitting validation:", err);
-    setStatus('error');
-    setMessage("Could not submit vote. Please try again.");
-    setVoted(false);
-    setTimeout(() => setStatus('idle'), 3000);
-  }
-};
+      // ✅ existing UI logic
+      setStatus('success');
+      setMessage("Vote recorded! Loading next contribution...");
 
-  // Old version for handleVote
-  // const handleVote = async (vote) => {
-  //   if (!contribution || voted) return;
+      setTimeout(() => {
+        fetchContribution();
+      }, 2000);
 
-  //   setVoted(true);
-  //   setStatus('submitting');
-    
-  //   try {
-  //     const collectionPath = `artifacts/${appId}/public/data/validations`;
-  //     const collectionRef = collection(db, collectionPath);
-      
-  //     await addDoc(collectionRef, {
-  //       contributionId: contribution.id,
-  //       contributionType: contribution.type,
-  //       validatorId: userId,
-  //       vote: vote, 
-  //       validatedAt: Timestamp.now(),
-  //     });
-
-  //     setStatus('success');
-  //     setMessage("Vote recorded! Loading next contribution...");
-
-  //     setTimeout(() => {
-  //       fetchContribution();
-  //     }, 2000);
-
-  //   } catch (err) {
-  //     console.error("Error submitting validation:", err);
-  //     setStatus('error');
-  //     setMessage("Could not submit vote. Please try again.");
-  //     setVoted(false);
-  //     setTimeout(() => setStatus('idle'), 3000);
-  //   }
-  // };
+    } catch (err) {
+      console.error("Error submitting validation:", err);
+      setStatus('error');
+      setMessage("Could not submit vote. Please try again.");
+      setVoted(false);
+      setTimeout(() => setStatus('idle'), 3000);
+    }
+  };
 
   const renderContribution = () => {
     if (!contribution) return null;
-    
+
     const { type, data } = contribution;
-    
+
     if (type === 'text') {
       return (
         <div className="space-y-4">
-          <PromptDisplay 
-            label="Original English Source" 
-            prompt={data.promptEnglish} 
+          <PromptDisplay
+            label="Original English Source"
+            prompt={data.promptEnglish}
             sourceTag={data.benchmarkSource !== 'none' ? data.benchmarkSource : null}
             sourceId={data.benchmarkId !== 'none' ? data.benchmarkId : null}
           />
@@ -1097,9 +1084,9 @@ const querySnapshot = await getDocs(q);
     if (type === 'audio') {
       return (
         <div className="space-y-5">
-          <PromptDisplay 
-            label="Original English Source" 
-            prompt={data.promptEnglish} 
+          <PromptDisplay
+            label="Original English Source"
+            prompt={data.promptEnglish}
             sourceTag={data.benchmarkSource !== 'none' ? data.benchmarkSource : null}
             sourceId={data.benchmarkId !== 'none' ? data.benchmarkId : null}
           />
@@ -1150,7 +1137,7 @@ const querySnapshot = await getDocs(q);
           <div className="p-5 border border-slate-200 bg-white rounded-2xl shadow-xs transition-all duration-300 hover:shadow-md">
             {renderContribution()}
           </div>
-          
+
           <div className="space-y-3">
             <span className="block text-sm font-semibold text-slate-700 uppercase tracking-wider">
               Evaluate Translation Accuracy
@@ -1191,7 +1178,23 @@ const querySnapshot = await getDocs(q);
   );
 };
 
-const ProfileForm = ({ db, userId, profileDocRef }) => {
+const StyledSelect = ({ id, label, value, onChange, children }) => (
+  <div className="space-y-1">
+    <label htmlFor={id} className="block text-sm font-semibold text-gray-700 uppercase tracking-wider">
+      {label}
+    </label>
+    <select
+      id={id}
+      value={value}
+      onChange={onChange}
+      className="w-full p-3.5 border border-slate-300 rounded-xl shadow-xs focus:ring-4 focus:ring-blue-100 focus:border-blue-500 hover:border-slate-400 transition-all duration-200 bg-white text-slate-800 font-medium"
+    >
+      {children}
+    </select>
+  </div>
+);
+
+const ProfileForm = ({ profileDocRef }) => {
   const [ageRange, setAgeRange] = useState('');
   const [gender, setGender] = useState('');
   const [primaryRegion, setPrimaryRegion] = useState('');
@@ -1200,7 +1203,7 @@ const ProfileForm = ({ db, userId, profileDocRef }) => {
 
   useEffect(() => {
     if (!profileDocRef) return;
-    
+
     const loadProfile = async () => {
       try {
         const docSnap = await getDoc(profileDocRef);
@@ -1223,7 +1226,7 @@ const ProfileForm = ({ db, userId, profileDocRef }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus('submitting');
-    
+
     try {
       await setDoc(profileDocRef, {
         ageRange,
@@ -1242,22 +1245,6 @@ const ProfileForm = ({ db, userId, profileDocRef }) => {
       setTimeout(() => setStatus('idle'), 3000);
     }
   };
-
-  const StyledSelect = ({ id, label, value, onChange, children }) => (
-    <div className="space-y-1">
-      <label htmlFor={id} className="block text-sm font-semibold text-gray-700 uppercase tracking-wider">
-        {label}
-      </label>
-      <select
-        id={id}
-        value={value}
-        onChange={onChange}
-        className="w-full p-3.5 border border-slate-300 rounded-xl shadow-xs focus:ring-4 focus:ring-blue-100 focus:border-blue-500 hover:border-slate-400 transition-all duration-200 bg-white text-slate-800 font-medium"
-      >
-        {children}
-      </select>
-    </div>
-  );
 
   return (
     <div className="animate-fadeIn space-y-6">
@@ -1280,14 +1267,14 @@ const ProfileForm = ({ db, userId, profileDocRef }) => {
           <option value="50-69">50 to 69 Years</option>
           <option value="70+">70+ Years</option>
         </StyledSelect>
-        
+
         <StyledSelect id="gender" label="Gender Expression" value={gender} onChange={(e) => setGender(e.target.value)}>
           <option value="">Choose to disclose or skip...</option>
           <option value="male">Male</option>
           <option value="female">Female</option>
           <option value="other">Other / Self-Describe</option>
         </StyledSelect>
-        
+
         <StyledSelect id="region" label="Socio-linguistic Region" value={primaryRegion} onChange={(e) => setPrimaryRegion(e.target.value)}>
           <option value="">Choose to disclose or skip...</option>
           <option value="hunza">Hunza Valley</option>
@@ -1305,11 +1292,9 @@ const ProfileForm = ({ db, userId, profileDocRef }) => {
   );
 };
 
-// --- App Orchestration Level ---
-
+// --- Updated App Orchestration Level ---
 export default function App() {
-  const [activeTab, setActiveTab] = useState('text'); // text, audio, validate, profile
-  const [firebaseApp, setFirebaseApp] = useState(null);
+  const [activeTab, setActiveTab] = useState('text');
   const [auth, setAuth] = useState(null);
   const [db, setDb] = useState(null);
   const [storage, setStorage] = useState(null);
@@ -1318,88 +1303,74 @@ export default function App() {
   const [contributionCount, setContributionCount] = useState(0);
   const [profileDocRef, setProfileDocRef] = useState(null);
   const [handshakeError, setHandshakeError] = useState(null);
-  
-  // Benchmark state defaults cleanly to fallbacks immediately
+  const [isQuotaMet, setIsQuotaMet] = useState(false);
+
   const [benchmarkCatalog, setBenchmarkCatalog] = useState(FALLBACK_BENCHMARKS);
 
-  // Phase 1: Core Platform Configuration and Authentication Handshake
   useEffect(() => {
-    let unsubProfile = () => {};
-    
+    let unsubProfile = () => { };
     try {
-      // BULLETPROOF INITIALIZATION: Check if Firebase is already running first
       const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-      setFirebaseApp(app);
-      
       const authInstance = getAuth(app);
       const dbInstance = getFirestore(app);
       const storageInstance = getStorage(app);
-
       setAuth(authInstance);
       setDb(dbInstance);
       setStorage(storageInstance);
-      
+
+      // 1. Check Global Daily Quota immediately
+      const today = new Date().toISOString().split('T');
+      const checkQuota = async () => {
+        try {
+          const statsRef = doc(dbInstance, `artifacts/${appId}/system`, 'daily_stats');
+          const statsSnap = await getDoc(statsRef);
+          if (statsSnap.exists() && statsSnap.data().date === today && statsSnap.data().writes >= DAILY_WRITE_LIMIT) {
+            setIsQuotaMet(true);
+          }
+        } catch (_e) { /* ignore */ }
+      };
+      checkQuota();
+
       const unsubscribeAuth = onAuthStateChanged(authInstance, async (user) => {
         if (user) {
           setUserId(user.uid);
-          
-          // Secure user metrics binding
           const userProfileDocRef = doc(dbInstance, `artifacts/${appId}/users/${user.uid}/profile`, 'user_data');
           setProfileDocRef(userProfileDocRef);
-          
-          // Monitor personal score metrics in real-time
           unsubProfile = onSnapshot(userProfileDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-              setContributionCount(docSnap.data().count || 0);
-            } else {
-              setContributionCount(0);
-            }
-          }, (err) => {
-            print("Profile listening baseline bypassed safely.");
+            setContributionCount(docSnap.exists() ? docSnap.data().count || 0 : 0);
           });
-
           setIsAuthReady(true);
         } else {
-          // Trigger security authentication anonymously if context token missing
-          try {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-              await signInWithCustomToken(authInstance, __initial_auth_token);
-            } else {
-              await signInAnonymously(authInstance);
-            }
-          } catch (authError) {
-            console.error("Handshake catch fired:", authError);
-            setHandshakeError(authError.message || authError.toString());
-            setIsAuthReady(true);
-          }
+          try { await signInAnonymously(authInstance); }
+          catch (authError) { setHandshakeError(authError.message); setIsAuthReady(true); }
         }
       });
-      
-      return () => {
-        unsubscribeAuth();
-        unsubProfile();
-      };
-
-    } catch (e) {
-      console.error("Critical ecosystem loading boundary exception:", e);
-      setHandshakeError(e.message || e.toString());
-      setIsAuthReady(true);
-    }
+      return () => { unsubscribeAuth(); unsubProfile(); };
+    } catch (e) { setHandshakeError(e.message); setIsAuthReady(true); }
   }, []);
 
-  // Phase 2: Isolated Dynamic Catalog Extraction (Triggers ONLY when authorized)
+  // Phase 2: Cached Dynamic Catalog Extraction (SAVES 50,000 reads!)
   useEffect(() => {
     if (!isAuthReady || !db || !userId) return;
 
     const fetchBenchmarkSentences = async () => {
       try {
+        // Check Local Storage Cache first!
+        const cacheKey = `benchmarks_${appId}`;
+        const cachedData = localStorage.getItem(cacheKey);
+        const cacheTime = localStorage.getItem(`${cacheKey}_time`);
+
+        // Use cache if it's less than 24 hours old (86400000 ms)
+        if (cachedData && cacheTime && (Date.now() - parseInt(cacheTime) < 86400000)) {
+          setBenchmarkCatalog(JSON.parse(cachedData));
+          return;
+        }
+
         const benchRef = collection(db, `artifacts/${appId}/public/data/benchmark_sentences`);
         const benchSnap = await getDocs(benchRef);
-        
-        if (!benchSnap.empty) {
-          const floresList = [];
-          const tatoebaList = [];
 
+        if (!benchSnap.empty) {
+          const floresList = []; const tatoebaList = [];
           benchSnap.docs.forEach(docObj => {
             const data = docObj.data();
             const item = { id: data.sentenceId || docObj.id, text: data.text };
@@ -1407,30 +1378,26 @@ export default function App() {
             else if (data.source === 'tatoeba') tatoebaList.push(item);
           });
 
-          // Update state dynamically only if rows exist
-          setBenchmarkCatalog({
+          const newCatalog = {
             flores: floresList.length > 0 ? floresList : FALLBACK_BENCHMARKS.flores,
             tatoeba: tatoebaList.length > 0 ? tatoebaList : FALLBACK_BENCHMARKS.tatoeba
-          });
-          console.log("Ecosystem benchmark array parsed successfully from Firestore.");
-        }
-      } catch (fetchError) {
-        // Essential catch prevents app hanging if firestore collection isn't seeded yet
-        console.warn("Using built-in benchmark presets. (Seeding collection optional).", fetchError);
-      }
-    };
+          };
 
+          setBenchmarkCatalog(newCatalog);
+
+          // Save to Local Browser Cache to stop future Firestore reads
+          localStorage.setItem(cacheKey, JSON.stringify(newCatalog));
+          localStorage.setItem(`${cacheKey}_time`, Date.now().toString());
+        }
+      } catch (_fetchError) { console.warn("Using built-in presets."); }
+    };
     fetchBenchmarkSentences();
   }, [isAuthReady, db, userId]);
 
-  if (handshakeError) {
-    return <ConnectionDiagnosticScreen errorMsg={handshakeError} />;
-  }
+  if (handshakeError) return <ConnectionDiagnosticScreen errorMsg={handshakeError} />;
+  if (isQuotaMet) return <QuotaReachedScreen />;
+  if (!isAuthReady || !db || !auth || !storage || !userId || !profileDocRef) return <GlobalLoader />;
 
-  if (!isAuthReady || !db || !auth || !storage || !userId || !profileDocRef) {
-    return <GlobalLoader />;
-  }
-  
   return (
     <>
       <style>{`
@@ -1464,9 +1431,9 @@ export default function App() {
           animation: counterBump 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
       `}</style>
-      
+
       <div className="min-h-screen w-full bg-slate-50/50 text-slate-900 font-sans antialiased">
-        
+
         {/* Responsive Header banner */}
         <header className="bg-white border-b border-slate-200/80 px-4 py-8 text-center space-y-4 shadow-xs">
           <div className="max-w-3xl mx-auto space-y-2">
@@ -1487,7 +1454,7 @@ export default function App() {
 
         {/* Action Center Layout */}
         <main className="max-w-2xl w-full mx-auto px-4 py-8 pb-16">
-          
+
           {/* Tabs Nav bar */}
           <div className="flex overflow-x-auto scrollbar-none border-b border-slate-200 mb-6 gap-2">
             <TabButton
@@ -1523,20 +1490,20 @@ export default function App() {
           {/* Core App Viewport */}
           <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200/80 transition-all duration-300">
             {activeTab === 'text' && (
-              <TextCollectionForm 
-                key="text" 
-                db={db} 
+              <TextCollectionForm
+                key="text"
+                db={db}
                 userId={userId}
-                profileDocRef={profileDocRef} 
+                profileDocRef={profileDocRef}
                 activeBenchmarkData={benchmarkCatalog}
               />
             )}
             {activeTab === 'audio' && (
-              <AudioCollectionForm 
-                key="audio" 
-                db={db} 
-                storage={storage} 
-                userId={userId} 
+              <AudioCollectionForm
+                key="audio"
+                db={db}
+                storage={storage}
+                userId={userId}
                 profileDocRef={profileDocRef}
                 activeBenchmarkData={benchmarkCatalog}
               />
@@ -1552,19 +1519,17 @@ export default function App() {
             {activeTab === 'profile' && (
               <ProfileForm
                 key="profile"
-                db={db}
-                userId={userId}
                 profileDocRef={profileDocRef}
               />
             )}
           </div>
         </main>
-        
+
         {/* Page Footer element */}
         <footer className="text-center py-8 border-t border-slate-200 bg-white">
-           <p className="text-xs text-slate-400 font-medium">
-             Burushaski-to-English Translation ML Dataset Hub • Secure Open-Source Project • © {new Date().getFullYear()}
-           </p>
+          <p className="text-xs text-slate-400 font-medium">
+            Burushaski-to-English Translation ML Dataset Hub • Secure Open-Source Project • © {new Date().getFullYear()}
+          </p>
         </footer>
       </div>
     </>

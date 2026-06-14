@@ -33,3 +33,6 @@ serviceAccountKey.json
 .env
 .env.local
 .env.*.local
+
+# Old code snippets
+code-snippets.txt
