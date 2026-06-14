@@ -1014,6 +1014,20 @@ const ValidationForm = ({ db, storage, userId }) => {
       const collectionPath = `artifacts/${appId}/public/data/validations`;
       const collectionRef = collection(db, collectionPath);
 
+      // ✅ check if already validated
+      const existingQuery = query(
+        collection(db, `artifacts/${appId}/public/data/validations`),
+        where("validatorId", "==", userId),
+        where("contributionId", "==", contribution.id),
+        limit(1)
+      );
+
+      const existingSnapshot = await getDocs(existingQuery);
+
+      if (!existingSnapshot.empty) {
+        throw new Error("You have already validated this item.");
+      }
+
       await addDoc(collectionRef, {
         contributionId: contribution.id,
         contributionType: contribution.type,
