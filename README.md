@@ -1,9 +1,9 @@
 # 🏔️ Burushaski Language Hub: NLP Data Collection Framework
 
-![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![Vite](https://img.shields.io/badge/Vite-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62E)
-![Firebase](https://img.shields.io/badge/firebase-ffca28?style=for-the-badge&logo=firebase&logoColor=black)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?style=plastic&logo=react&logoColor=61DAFB)
+![Vite](https://img.shields.io/badge/Vite-B73BFE?style=plastic&logo=vite&logoColor=FFD62E)
+![Firebase](https://img.shields.io/badge/firebase-ffca28?style=plastic&logo=firebase&logoColor=black)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=plastic&logo=tailwind-css&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
 An open-source, crowdsourced data collection platform designed to build a high-quality parallel corpus for **Burushaski**, a language isolate spoken in the Gilgit-Baltistan region of Pakistan.
