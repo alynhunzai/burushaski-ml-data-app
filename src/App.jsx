@@ -35,13 +35,13 @@ import {
 
 // --- Firebase Configuration ---
 const firebaseConfig = {
-  apiKey: "AIzaSyC21Fard2dd2DOAXQS6pO6mR96rDjdqA-A",
-  authDomain: "burushaski-language-hub.firebaseapp.com",
-  projectId: "burushaski-language-hub",
-  storageBucket: "burushaski-language-hub.firebasestorage.app",
-  messagingSenderId: "282737945049",
-  appId: "1:282737945049:web:651dd3570d865980c7d1c8",
-  measurementId: "G-YZXLJK6WHK"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "MOCK_API_KEY_FOR_PREVIEW_MODE",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "MOCK_AUTH_DOMAIN_FOR_PREVIEW_MODE",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "MOCK_PROJECT_ID_FOR_PREVIEW_MODE",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "MOCK_STORAGE_BUCKET_FOR_PREVIEW_MODE",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "MOCK_MESSAGING_SENDER_ID_FOR_PREVIEW_MODE",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "MOCK_APP_ID_FOR_PREVIEW_MODE",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "MOCK_MEASUREMENT_ID"
 };
 
 const appId = "burushaski-translation-hub";
