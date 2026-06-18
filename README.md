@@ -135,4 +135,4 @@ Encountered an issue or have linguistic validation inquiries? Connect with me:
 
 - **LinkedIn**: [@alynhunz](https://www.linkedin.com/in/alynhunz)
 
-- **GitHub Issues**: Issue Tracker
+- **GitHub Issues**: [Issue Tracker](https://github.com/alynhunzai/burushaski-ml-data-app/issues)
