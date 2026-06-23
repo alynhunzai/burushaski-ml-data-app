@@ -451,6 +451,16 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
         createdAt: Timestamp.now(),
         validationCount: 0,
         validated: false,
+
+        validationStats: {
+          correct: 0,
+          incorrect: 0,
+          unsure: 0
+        },
+
+        confidenceScore: 0,
+        finalLabel: "pending"
+
       });
 
       await setDoc(profileDocRef, { count: increment(1) }, { merge: true });
@@ -689,6 +699,7 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
 
       const collectionPath = `artifacts/${appId}/public/data/audio_contributions`;
       const collectionRef = collection(db, collectionPath);
+
       await addDoc(collectionRef, {
         promptEnglish: englishText,
         translationBurushaski: burushaskiTranscript,
@@ -701,6 +712,16 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
         createdAt: Timestamp.now(),
         validationCount: 0,
         validated: false,
+
+        validationStats: {
+          correct: 0,
+          incorrect: 0,
+          unsure: 0
+        },
+
+        confidenceScore: 0,
+        finalLabel: "pending"
+
       });
 
       await setDoc(profileDocRef, { count: increment(1) }, { merge: true });
@@ -1055,15 +1076,60 @@ const ValidationForm = ({ db, storage, userId }) => {
         contribution.id
       );
 
-      const currentCount = contribution.data.validationCount || 0;
-      const newCount = currentCount + 1;
+      // ✅ existing stats (or initialize)
+      const currentStats = contribution.data.validationStats || {
+        correct: 0,
+        incorrect: 0,
+        unsure: 0
+      };
 
-      // ✅ threshold
-      const MAX_VALIDATIONS = 3;
+      // ✅ copy stats safely
+      const updatedStats = {
+        correct: currentStats.correct,
+        incorrect: currentStats.incorrect,
+        unsure: currentStats.unsure
+      };
 
+      // ✅ increment vote bucket
+      updatedStats[vote] = (updatedStats[vote] || 0) + 1;
+
+      // ✅ total votes
+      const totalVotes =
+        updatedStats.correct +
+        updatedStats.incorrect +
+        updatedStats.unsure;
+
+      // ✅ confidence calculation (ignoring "unsure" for quality)
+      const decisiveVotes =
+        updatedStats.correct + updatedStats.incorrect;
+
+      const confidence =
+        decisiveVotes > 0
+          ? updatedStats.correct / decisiveVotes
+          : 0;
+
+      // ✅ ✅ System Intelligence Rules
+
+      // decision thresholds
+      let finalLabel = "pending";
+
+      if (totalVotes >= 3) {
+        if (confidence >= 0.7) finalLabel = "correct";
+        else if (confidence <= 0.3) finalLabel = "incorrect";
+        else finalLabel = "uncertain";
+      }
+
+      // ✅ max validation cap
+      const MAX_VALIDATIONS = 5;
+      const isValidated = totalVotes >= MAX_VALIDATIONS;
+
+      // ✅ final update
       await updateDoc(contributionRef, {
         validationCount: increment(1),
-        validated: newCount >= MAX_VALIDATIONS // ✅ NEW
+        validationStats: updatedStats,
+        confidenceScore: confidence,
+        finalLabel: finalLabel,
+        validated: isValidated
       });
 
       // ✅ existing UI logic
@@ -1163,6 +1229,25 @@ const ValidationForm = ({ db, storage, userId }) => {
       {!loading && contribution && (
         <div className="space-y-6 animate-fadeIn">
           <div className="p-5 border border-slate-200 bg-white rounded-2xl shadow-xs transition-all duration-300 hover:shadow-md">
+            {contribution?.data?.validationStats && (
+              <div className="p-3 bg-slate-50 border rounded-xl text-sm text-slate-600 space-y-1">
+
+                <p>
+                  ✅ {contribution.data.validationStats.correct || 0} |
+                  ❌ {contribution.data.validationStats.incorrect || 0} |
+                  🤔 {contribution.data.validationStats.unsure || 0}
+                </p>
+
+                <p>
+                  Confidence: {(contribution.data.confidenceScore * 100).toFixed(1)}%
+                </p>
+
+                <p className="text-xs italic text-slate-500">
+                  Status: {contribution.data.finalLabel}
+                </p>
+
+              </div>
+            )}
             {renderContribution()}
           </div>
 
