@@ -76,7 +76,7 @@ const FALLBACK_BENCHMARKS = {
 const getRandomPrompt = (promptArray, lastPrompt) => {
   let newPrompt = lastPrompt;
   if (!promptArray || promptArray.length === 0) return null;
-  if (promptArray.length === 1) return promptArray;
+  if (promptArray.length === 1) return promptArray[0];
   while (newPrompt === lastPrompt) {
     const randomIndex = Math.floor(Math.random() * promptArray.length);
     newPrompt = promptArray[randomIndex];
@@ -403,12 +403,12 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
 
   const getNewPrompt = useCallback((targetSource = subSource) => {
     const list = activeBenchmarkData[targetSource] || FALLBACK_BENCHMARKS[targetSource];
-    const newPrompt = getRandomPrompt(list, currentPrompt);
+    const newPrompt = getRandomPrompt(list);
     setCurrentPrompt(newPrompt);
-  }, [subSource, activeBenchmarkData, currentPrompt]);
+  }, [subSource, activeBenchmarkData]);
 
   useEffect(() => {
-    if (!activeBenchmarkData) return
+    if (!activeBenchmarkData) return;
     const promptSource = subSource;
     const timer = window.setTimeout(() => getNewPrompt(promptSource), 0);
     return () => window.clearTimeout(timer);
@@ -587,9 +587,9 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
 
   const getNewPrompt = useCallback((targetSource = subSource) => {
     const list = activeBenchmarkData[targetSource] || FALLBACK_BENCHMARKS[targetSource];
-    const newPrompt = getRandomPrompt(list, currentPrompt);
+    const newPrompt = getRandomPrompt(list);
     setCurrentPrompt(newPrompt);
-  }, [subSource, activeBenchmarkData, currentPrompt]);
+  }, [subSource, activeBenchmarkData]);
 
   useEffect(() => {
     if (!activeBenchmarkData) return;
@@ -941,7 +941,7 @@ const ValidationForm = ({ db, storage, userId }) => {
           where("userId", "!=", userId),
           where("validated", "==", false), // ✅ NEW
           orderBy("validationCount", "asc"),
-          limit(5)
+          limit(10)
         );
 
         const snapshot = await getDocs(q);
@@ -966,7 +966,7 @@ const ValidationForm = ({ db, storage, userId }) => {
       const valQuery = query(
         valRef,
         where("validatorId", "==", userId),
-        limit(50)
+        limit(200)
       );
 
       const valSnapshot = await getDocs(valQuery);
@@ -980,7 +980,14 @@ const ValidationForm = ({ db, storage, userId }) => {
         !validatedIds.includes(item.doc.id)
       );
 
-      const pool = unseenDocs.length ? unseenDocs : allDocs;
+      // ✅ FIX: do NOT fall back to already seen items
+      if (unseenDocs.length === 0) {
+        setLoading(false);
+        setMessage("You have already reviewed all available contributions. Check back later!");
+        return;
+      }
+
+      const pool = unseenDocs;
 
       const randomItem =
         pool[Math.floor(Math.random() * pool.length)];
