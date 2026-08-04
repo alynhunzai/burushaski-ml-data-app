@@ -451,17 +451,17 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
         createdAt: Timestamp.now(),
         validationCount: 0,
         validated: false,
-
         validationStats: {
           correct: 0,
           incorrect: 0,
           unsure: 0
         },
-
         confidenceScore: 0,
-        finalLabel: "pending"
+        finalLabel: "pending",
+        isGold: false,
+        qualityTier: "bronze"
+        });
 
-      });
 
       await setDoc(profileDocRef, { count: increment(1) }, { merge: true });
 
@@ -712,16 +712,15 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
         createdAt: Timestamp.now(),
         validationCount: 0,
         validated: false,
-
         validationStats: {
           correct: 0,
           incorrect: 0,
           unsure: 0
         },
-
         confidenceScore: 0,
-        finalLabel: "pending"
-
+        finalLabel: "pending",
+        isGold: false,
+        qualityTier: "bronze"
       });
 
       await setDoc(profileDocRef, { count: increment(1) }, { merge: true });
@@ -1035,116 +1034,223 @@ const ValidationForm = ({ db, storage, userId }) => {
   }, [db, userId, fetchContribution]);
 
   // ✅ HANDLE VOTE (with scoring + safety)
-  const handleVote = async (vote) => {
-    if (!contribution || voted) return;
+const handleVote = async (vote) => {
+  if (!contribution || voted) return;
 
-    setVoted(true);
-    setStatus('submitting');
+  setVoted(true);
+  setStatus('submitting');
 
-    try {
-      // ✅ prevent invalid votes
-      if (!["correct", "incorrect", "unsure"].includes(vote)) {
-        throw new Error("Invalid vote type");
-      }
+  try {
+    // ✅ Validate vote type
+    if (!["correct", "incorrect", "unsure"].includes(vote)) {
+      throw new Error("Invalid vote type.");
+    }
 
-      // ✅ prevent duplicate voting
-      const existingQuery = query(
-        collection(db, `artifacts/${appId}/public/data/validations`),
-        where("validatorId", "==", userId),
-        where("contributionId", "==", contribution.id),
-        limit(1)
-      );
-
-      const existingSnapshot = await getDocs(existingQuery);
-
-      if (!existingSnapshot.empty) {
-        throw new Error("You already validated this item.");
-      }
-
-      // ✅ save validation
-      await addDoc(
-        collection(db, `artifacts/${appId}/public/data/validations`),
-        {
-          contributionId: contribution.id,
-          contributionType: contribution.type,
-          validatorId: userId,
-          vote,
-          validatedAt: Timestamp.now(),
-        }
-      );
-
-      // ✅ correct collection
-      const contributionCollection =
-        contribution.type === "text"
-          ? "text_contributions"
-          : "audio_contributions";
-
-      const contributionRef = doc(
+    // ✅ Prevent duplicate voting
+    const existingQuery = query(
+      collection(
         db,
-        `artifacts/${appId}/public/data/${contributionCollection}`,
-        contribution.id
-      );
+        `artifacts/${appId}/public/data/validations`
+      ),
+      where("validatorId", "==", userId),
+      where("contributionId", "==", contribution.id),
+      limit(1)
+    );
 
-      // ✅ current stats
-      const currentStats = contribution.data.validationStats || {
+    const existingSnapshot = await getDocs(existingQuery);
+
+    if (!existingSnapshot.empty) {
+      throw new Error(
+        "You have already validated this contribution."
+      );
+    }
+
+    // ✅ Save validation record
+    await addDoc(
+      collection(
+        db,
+        `artifacts/${appId}/public/data/validations`
+      ),
+      {
+        contributionId: contribution.id,
+        contributionType: contribution.type,
+        validatorId: userId,
+        vote,
+        validatedAt: Timestamp.now()
+      }
+    );
+
+    // ✅ Determine contribution collection
+    const contributionCollection =
+      contribution.type === "text"
+        ? "text_contributions"
+        : "audio_contributions";
+
+    const contributionRef = doc(
+      db,
+      `artifacts/${appId}/public/data/${contributionCollection}`,
+      contribution.id
+    );
+
+    // ✅ Existing statistics
+    const currentStats =
+      contribution.data.validationStats || {
         correct: 0,
         incorrect: 0,
         unsure: 0
       };
 
-      // ✅ FIX 3: safe copy
-      const updatedStats = { ...currentStats };
+    const updatedStats = {
+      ...currentStats
+    };
 
-      updatedStats[vote] += 1;
+    updatedStats[vote] += 1;
 
-      // ✅ totals
-      const totalVotes =
-        updatedStats.correct +
-        updatedStats.incorrect +
-        updatedStats.unsure;
+    // ✅ Vote totals
+    const totalVotes =
+      updatedStats.correct +
+      updatedStats.incorrect +
+      updatedStats.unsure;
 
-      // ✅ FIX 5: prevent abuse (ignore unsure)
-      const decisiveVotes =
-        updatedStats.correct + updatedStats.incorrect;
+    // ✅ Ignore "unsure" votes in confidence score
+    const decisiveVotes =
+      updatedStats.correct +
+      updatedStats.incorrect;
 
-      const confidence =
-        decisiveVotes > 0
-          ? updatedStats.correct / decisiveVotes
-          : 0;
+    const confidence =
+      decisiveVotes > 0
+        ? updatedStats.correct / decisiveVotes
+        : 0;
 
-      // ✅ FIX 6: system rules
-      let finalLabel = "pending";
+    // ✅ Classification rules
+    let finalLabel = "pending";
 
-      if (totalVotes >= 3) {
-        if (confidence >= 0.7) finalLabel = "correct";
-        else if (confidence <= 0.3) finalLabel = "incorrect";
-        else finalLabel = "uncertain";
+    if (totalVotes >= 3) {
+      if (confidence >= 0.7) {
+        finalLabel = "correct";
+      } else if (confidence <= 0.3) {
+        finalLabel = "incorrect";
+      } else {
+        finalLabel = "uncertain";
       }
-
-      const MAX_VALIDATIONS = 5;
-      const isValidated = totalVotes >= MAX_VALIDATIONS;
-
-      // ✅ update Firestore
-      await updateDoc(contributionRef, {
-        validationCount: increment(1),
-        validationStats: updatedStats,
-        confidenceScore: confidence,
-        finalLabel: finalLabel,
-        validated: isValidated
-      });
-
-      setStatus('success');
-      setMessage("Vote recorded! Loading next...");
-
-      setTimeout(fetchContribution, 1500);
-
-    } catch (err) {
-      console.error("Error submitting validation:", err);
-      setStatus('error');
-      setMessage(err.message || "Vote failed.");
-      setVoted(false);
     }
-  };
+
+    // ✅ Validation completion rule
+    const MAX_VALIDATIONS = 5;
+
+    const isValidated =
+      totalVotes >= MAX_VALIDATIONS;
+
+    // ✅ Quality tiers
+    let qualityTier = "bronze";
+
+    if (confidence >= 0.70) {
+      qualityTier = "silver";
+    }
+
+    if (confidence >= 0.90) {
+      qualityTier = "gold";
+    }
+
+    if (confidence >= 0.98) {
+      qualityTier = "platinum";
+    }
+
+    // ✅ Gold dataset eligibility
+    const isGold =
+      isValidated &&
+      confidence >= 0.90 &&
+      finalLabel === "correct";
+
+    // ✅ Update original contribution
+    await updateDoc(contributionRef, {
+      validationCount: increment(1),
+      validationStats: updatedStats,
+      confidenceScore: confidence,
+      finalLabel,
+      validated: isValidated,
+      isGold,
+      qualityTier
+    });
+
+    // ✅ Automatically promote to Gold Dataset
+    // Only do this once
+    if (isGold && !contribution.data.isGold) {
+      await addDoc(
+        collection(
+          db,
+          `artifacts/${appId}/public/data/gold_dataset`
+        ),
+        {
+          sourceContributionId: contribution.id,
+
+          contributionType:
+            contribution.type,
+
+          promptEnglish:
+            contribution.data.promptEnglish,
+
+          translationBurushaski:
+            contribution.data.translationBurushaski,
+
+          dialect:
+            contribution.data.dialect,
+
+          storagePath:
+            contribution.data.storagePath || null,
+
+          benchmarkSource:
+            contribution.data.benchmarkSource || null,
+
+          benchmarkId:
+            contribution.data.benchmarkId || null,
+
+          validationCount: totalVotes,
+
+          validationStats: updatedStats,
+
+          confidenceScore: confidence,
+
+          finalLabel,
+
+          qualityTier,
+
+          promotedAt: Timestamp.now()
+        }
+      );
+    }
+
+    // ✅ Success UI
+    setStatus('success');
+    setMessage(
+      "Vote recorded! Loading next contribution..."
+    );
+
+    setTimeout(() => {
+      fetchContribution();
+    }, 1500);
+
+  } catch (err) {
+    console.error(
+      "Error submitting validation:",
+      err
+    );
+
+    setStatus('error');
+
+    setMessage(
+      err.message ||
+      "Could not submit vote. Please try again."
+    );
+
+    setVoted(false);
+
+    setTimeout(
+      () => setStatus('idle'),
+      3000
+    );
+  }
+};
 
   // ✅ render contribution
   const renderContribution = () => {
@@ -1371,6 +1477,59 @@ export default function App() {
 
   const [benchmarkCatalog, setBenchmarkCatalog] = useState(FALLBACK_BENCHMARKS);
 
+
+  const exportGoldDataset = async () => {
+  try {
+    const collections = [
+      "text_contributions",
+      "audio_contributions"
+    ];
+
+    let results = [];
+
+    for (const collectionName of collections) {
+      const collectionRef = collection(
+        db,
+        `artifacts/${appId}/public/data/${collectionName}`
+      );
+
+      const q = query(
+        collectionRef,
+        where("isGold", "==", true)
+      );
+
+      const snapshot = await getDocs(q);
+
+      snapshot.docs.forEach(docSnap => {
+        results.push({
+          id: docSnap.id,
+          type:
+            collectionName === "audio_contributions"
+              ? "audio"
+              : "text",
+          ...docSnap.data()
+        });
+      });
+    }
+
+    const blob = new Blob(
+      [JSON.stringify(results, null, 2)],
+      { type: "application/json" }
+    );
+
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "burushaski_gold_dataset.json";
+    a.click();
+
+    URL.revokeObjectURL(url);
+
+  } catch (err) {
+    console.error("Gold export failed:", err);
+  }
+};
   // Initialize Firebase clients once (avoid setState inside effects)
   const firebaseApp = useMemo(() => {
     try {
