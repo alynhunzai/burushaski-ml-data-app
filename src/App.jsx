@@ -32,6 +32,7 @@ import {
   uploadBytes,
   getDownloadURL
 } from 'firebase/storage';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
 // --- Firebase Configuration ---
 const firebaseConfig = {
@@ -1551,6 +1552,20 @@ export default function App() {
 
     const init = async () => {
       try {
+        if (typeof window !== 'undefined') {
+          // Enabling debug token in development mode so localhost doesn't get blocked
+          if (import.meta.env.DEV) {
+            self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+          }
+
+          const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+          if (siteKey) {
+            initializeAppCheck(firebaseApp, {
+              provider: new ReCaptchaV3Provider(siteKey),
+              isTokenAutoRefreshEnabled: true
+            });
+          }
+        }
         const authInstance = getAuth(firebaseApp);
         const dbInstance = getFirestore(firebaseApp);
         getStorage(firebaseApp);
