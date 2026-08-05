@@ -451,7 +451,17 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
         createdAt: Timestamp.now(),
         validationCount: 0,
         validated: false,
-      });
+        validationStats: {
+          correct: 0,
+          incorrect: 0,
+          unsure: 0
+        },
+        confidenceScore: 0,
+        finalLabel: "pending",
+        isGold: false,
+        qualityTier: "bronze"
+        });
+
 
       await setDoc(profileDocRef, { count: increment(1) }, { merge: true });
 
@@ -689,6 +699,7 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
 
       const collectionPath = `artifacts/${appId}/public/data/audio_contributions`;
       const collectionRef = collection(db, collectionPath);
+
       await addDoc(collectionRef, {
         promptEnglish: englishText,
         translationBurushaski: burushaskiTranscript,
@@ -701,6 +712,15 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
         createdAt: Timestamp.now(),
         validationCount: 0,
         validated: false,
+        validationStats: {
+          correct: 0,
+          incorrect: 0,
+          unsure: 0
+        },
+        confidenceScore: 0,
+        finalLabel: "pending",
+        isGold: false,
+        qualityTier: "bronze"
       });
 
       await setDoc(profileDocRef, { count: increment(1) }, { merge: true });
@@ -909,13 +929,13 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
  * Form for validating data from other users.
  */
 const ValidationForm = ({ db, storage, userId }) => {
-  const [contribution, setContribution] = useState(null); // { id, type, data }
+  const [contribution, setContribution] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState(null);
   const [status, setStatus] = useState('idle');
   const [voted, setVoted] = useState(false);
 
-  // IMPROVED AND SMARTER FETCH LOGIC
+  // ✅ FETCH LOGIC
   const fetchContribution = useCallback(async () => {
     setLoading(true);
     setMessage(null);
@@ -939,7 +959,7 @@ const ValidationForm = ({ db, storage, userId }) => {
         const q = query(
           collectionRef,
           where("userId", "!=", userId),
-          where("validated", "==", false), // ✅ NEW
+          where("validated", "==", false),
           orderBy("validationCount", "asc"),
           limit(10)
         );
@@ -957,7 +977,7 @@ const ValidationForm = ({ db, storage, userId }) => {
         return;
       }
 
-      // ✅ FIX: correct validations path
+      // ✅ Fetch user's previous validations
       const valRef = collection(
         db,
         `artifacts/${appId}/public/data/validations`
@@ -975,15 +995,15 @@ const ValidationForm = ({ db, storage, userId }) => {
         doc => doc.data().contributionId
       );
 
-      // ✅ filter already seen
+      // ✅ Filter already seen
       const unseenDocs = allDocs.filter(item =>
         !validatedIds.includes(item.doc.id)
       );
 
-      // ✅ FIX: do NOT fall back to already seen items
+      // ✅ Prevent duplicates entirely
       if (unseenDocs.length === 0) {
         setLoading(false);
-        setMessage("You have already reviewed all available contributions. Check back later!");
+        setMessage("You have already reviewed all available contributions.");
         return;
       }
 
@@ -1010,208 +1030,326 @@ const ValidationForm = ({ db, storage, userId }) => {
 
   useEffect(() => {
     if (!db || !userId) return;
-    const timer = window.setTimeout(() => fetchContribution(), 0);
-    return () => window.clearTimeout(timer);
+    fetchContribution();
   }, [db, userId, fetchContribution]);
 
-  // ✅ ENHANCED handleVote with validation count increment
-  const handleVote = async (vote) => {
-    if (!contribution || voted) return;
+  // ✅ HANDLE VOTE (with scoring + safety)
+const handleVote = async (vote) => {
+  if (!contribution || voted) return;
 
-    setVoted(true);
-    setStatus('submitting');
+  setVoted(true);
+  setStatus('submitting');
 
-    try {
-      // ✅ 1. Save validation
-      const collectionPath = `artifacts/${appId}/public/data/validations`;
-      const collectionRef = collection(db, collectionPath);
+  try {
+    // ✅ Validate vote type
+    if (!["correct", "incorrect", "unsure"].includes(vote)) {
+      throw new Error("Invalid vote type.");
+    }
 
-      // ✅ check if already validated
-      const existingQuery = query(
-        collection(db, `artifacts/${appId}/public/data/validations`),
-        where("validatorId", "==", userId),
-        where("contributionId", "==", contribution.id),
-        limit(1)
+    // ✅ Prevent duplicate voting
+    const existingQuery = query(
+      collection(
+        db,
+        `artifacts/${appId}/public/data/validations`
+      ),
+      where("validatorId", "==", userId),
+      where("contributionId", "==", contribution.id),
+      limit(1)
+    );
+
+    const existingSnapshot = await getDocs(existingQuery);
+
+    if (!existingSnapshot.empty) {
+      throw new Error(
+        "You have already validated this contribution."
       );
+    }
 
-      const existingSnapshot = await getDocs(existingQuery);
-
-      if (!existingSnapshot.empty) {
-        throw new Error("You have already validated this item.");
-      }
-
-
-
-      await addDoc(collectionRef, {
+    // ✅ Save validation record
+    await addDoc(
+      collection(
+        db,
+        `artifacts/${appId}/public/data/validations`
+      ),
+      {
         contributionId: contribution.id,
         contributionType: contribution.type,
         validatorId: userId,
-        vote: vote,
-        validatedAt: Timestamp.now(),
-      });
+        vote,
+        validatedAt: Timestamp.now()
+      }
+    );
 
-      // ✅ 2. NEW: increment validationCount
-      const contributionCollection =
-        contribution.type === "text"
-          ? "text_contributions"
-          : "audio_contributions";
+    // ✅ Determine contribution collection
+    const contributionCollection =
+      contribution.type === "text"
+        ? "text_contributions"
+        : "audio_contributions";
 
-      const contributionRef = doc(
-        db,
-        `artifacts/${appId}/public/data/${contributionCollection}`,
-        contribution.id
-      );
+    const contributionRef = doc(
+      db,
+      `artifacts/${appId}/public/data/${contributionCollection}`,
+      contribution.id
+    );
 
-      const currentCount = contribution.data.validationCount || 0;
-      const newCount = currentCount + 1;
+    // ✅ Existing statistics
+    const currentStats =
+      contribution.data.validationStats || {
+        correct: 0,
+        incorrect: 0,
+        unsure: 0
+      };
 
-      // ✅ threshold
-      const MAX_VALIDATIONS = 3;
+    const updatedStats = {
+      ...currentStats
+    };
 
-      await updateDoc(contributionRef, {
-        validationCount: increment(1),
-        validated: newCount >= MAX_VALIDATIONS // ✅ NEW
-      });
+    updatedStats[vote] += 1;
 
-      // ✅ existing UI logic
-      setStatus('success');
-      setMessage("Vote recorded! Loading next contribution...");
+    // ✅ Vote totals
+    const totalVotes =
+      updatedStats.correct +
+      updatedStats.incorrect +
+      updatedStats.unsure;
 
-      setTimeout(() => {
-        fetchContribution();
-      }, 2000);
+    // ✅ Ignore "unsure" votes in confidence score
+    const decisiveVotes =
+      updatedStats.correct +
+      updatedStats.incorrect;
 
-    } catch (err) {
-      console.error("Error submitting validation:", err);
-      setStatus('error');
-      setMessage("Could not submit vote. Please try again.");
-      setVoted(false);
-      setTimeout(() => setStatus('idle'), 3000);
+    const confidence =
+      decisiveVotes > 0
+        ? updatedStats.correct / decisiveVotes
+        : 0;
+
+    // ✅ Classification rules
+    let finalLabel = "pending";
+
+    if (totalVotes >= 3) {
+      if (confidence >= 0.7) {
+        finalLabel = "correct";
+      } else if (confidence <= 0.3) {
+        finalLabel = "incorrect";
+      } else {
+        finalLabel = "uncertain";
+      }
     }
-  };
 
+    // ✅ Validation completion rule
+    const MAX_VALIDATIONS = 5;
+
+    const isValidated =
+      totalVotes >= MAX_VALIDATIONS;
+
+    // ✅ Quality tiers
+    let qualityTier = "bronze";
+
+    if (confidence >= 0.70) {
+      qualityTier = "silver";
+    }
+
+    if (confidence >= 0.90) {
+      qualityTier = "gold";
+    }
+
+    if (confidence >= 0.98) {
+      qualityTier = "platinum";
+    }
+
+    // ✅ Gold dataset eligibility
+    const isGold =
+      isValidated &&
+      confidence >= 0.90 &&
+      finalLabel === "correct";
+
+    // ✅ Update original contribution
+    await updateDoc(contributionRef, {
+      validationCount: increment(1),
+      validationStats: updatedStats,
+      confidenceScore: confidence,
+      finalLabel,
+      validated: isValidated,
+      isGold,
+      qualityTier
+    });
+
+    // ✅ Automatically promote to Gold Dataset
+    // Only do this once
+    if (isGold && !contribution.data.isGold) {
+      await addDoc(
+        collection(
+          db,
+          `artifacts/${appId}/public/data/gold_dataset`
+        ),
+        {
+          sourceContributionId: contribution.id,
+
+          contributionType:
+            contribution.type,
+
+          promptEnglish:
+            contribution.data.promptEnglish,
+
+          translationBurushaski:
+            contribution.data.translationBurushaski,
+
+          dialect:
+            contribution.data.dialect,
+
+          storagePath:
+            contribution.data.storagePath || null,
+
+          benchmarkSource:
+            contribution.data.benchmarkSource || null,
+
+          benchmarkId:
+            contribution.data.benchmarkId || null,
+
+          validationCount: totalVotes,
+
+          validationStats: updatedStats,
+
+          confidenceScore: confidence,
+
+          finalLabel,
+
+          qualityTier,
+
+          promotedAt: Timestamp.now()
+        }
+      );
+    }
+
+    // ✅ Success UI
+    setStatus('success');
+    setMessage(
+      "Vote recorded! Loading next contribution..."
+    );
+
+    setTimeout(() => {
+      fetchContribution();
+    }, 1500);
+
+  } catch (err) {
+    console.error(
+      "Error submitting validation:",
+      err
+    );
+
+    setStatus('error');
+
+    setMessage(
+      err.message ||
+      "Could not submit vote. Please try again."
+    );
+
+    setVoted(false);
+
+    setTimeout(
+      () => setStatus('idle'),
+      3000
+    );
+  }
+};
+
+  // ✅ render contribution
   const renderContribution = () => {
     if (!contribution) return null;
 
     const { type, data } = contribution;
 
-    if (type === 'text') {
-      return (
-        <div className="space-y-4">
-          <PromptDisplay
-            label="Original English Source"
-            prompt={data.promptEnglish}
-            sourceTag={data.benchmarkSource !== 'none' ? data.benchmarkSource : null}
-            sourceId={data.benchmarkId !== 'none' ? data.benchmarkId : null}
-          />
-          <div className="space-y-1">
-            <span className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Provided Burushaski translation ({data.dialect})
-            </span>
-            <div className="w-full p-4 bg-blue-50/50 border border-blue-100 rounded-xl min-h-[72px]">
-              <p className="text-blue-900 text-base font-semibold leading-relaxed">{data.translationBurushaski}</p>
-            </div>
-          </div>
-        </div>
-      );
-    }
+    return (
+      <div className="space-y-4">
+        <PromptDisplay
+          label="Original English"
+          prompt={data.promptEnglish}
+        />
 
-    if (type === 'audio') {
-      return (
-        <div className="space-y-5">
-          <PromptDisplay
-            label="Original English Source"
-            prompt={data.promptEnglish}
-            sourceTag={data.benchmarkSource !== 'none' ? data.benchmarkSource : null}
-            sourceId={data.benchmarkId !== 'none' ? data.benchmarkId : null}
-          />
-          <div className="space-y-1">
-            <span className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Written Transcript ({data.dialect})
-            </span>
-            <div className="w-full p-4 bg-blue-50/50 border border-blue-100 rounded-xl min-h-[60px]">
-              <p className="text-blue-900 text-base font-semibold leading-relaxed">{data.translationBurushaski}</p>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <span className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Recorded Vocal Stream ({data.dialect})
-            </span>
-            <AudioPlayer storage={storage} storagePath={data.storagePath} />
-          </div>
+        <div>
+          <p className="font-semibold text-sm text-gray-600">
+            Burushaski ({data.dialect})
+          </p>
+          <p className="bg-blue-50 p-3 rounded">
+            {data.translationBurushaski}
+          </p>
         </div>
-      );
-    }
-    return null;
+
+        {type === 'audio' && (
+          <AudioPlayer
+            storage={storage}
+            storagePath={data.storagePath}
+          />
+        )}
+      </div>
+    );
   };
 
-  return (
-    <div className="animate-fadeIn space-y-6">
-      <div className="space-y-2">
-        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-          <CheckSquare className="w-6 h-6 text-blue-600" />
-          Translation Audit Board
-        </h2>
-        <p className="text-sm text-slate-600 leading-relaxed">
-          Improve overall translation system performance by auditing input from neighboring users. Do the text and audio align?
-        </p>
-      </div>
+  // ✅ FIX 1 & 2: always-safe UI values
+  const stats = contribution?.data?.validationStats || {
+    correct: 0,
+    incorrect: 0,
+    unsure: 0
+  };
 
-      {loading && (
-        <div className="flex justify-center items-center min-h-[220px]">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-        </div>
-      )}
+  const confidence = contribution?.data?.confidenceScore || 0;
+  const label = contribution?.data?.finalLabel || "pending";
+
+  // ✅ color badge
+  const confidenceColor =
+    confidence >= 0.7
+      ? "text-green-600"
+      : confidence <= 0.3
+        ? "text-red-600"
+        : "text-yellow-600";
+
+  return (
+    <div className="space-y-6">
+
+      {loading && <p>Loading...</p>}
 
       {!loading && message && (
-        <StatusMessage status={status === 'error' ? 'error' : 'success'} message={message} />
+        <p className="text-sm">{message}</p>
       )}
 
       {!loading && contribution && (
-        <div className="space-y-6 animate-fadeIn">
-          <div className="p-5 border border-slate-200 bg-white rounded-2xl shadow-xs transition-all duration-300 hover:shadow-md">
+        <>
+          <div className="p-4 border rounded-lg">
             {renderContribution()}
-          </div>
 
-          <div className="space-y-3">
-            <span className="block text-sm font-semibold text-slate-700 uppercase tracking-wider">
-              Evaluate Translation Accuracy
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <button
-                type="button"
-                disabled={voted}
-                onClick={() => handleVote('correct')}
-                className="flex items-center justify-center gap-2 px-4 py-3.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-xl font-bold transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-40 shadow-xs"
-              >
-                <ThumbsUp className="w-5 h-5" />
-                Valid Match
-              </button>
-              <button
-                type="button"
-                disabled={voted}
-                onClick={() => handleVote('incorrect')}
-                className="flex items-center justify-center gap-2 px-4 py-3.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-xl font-bold transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-40 shadow-xs"
-              >
-                <ThumbsDown className="w-5 h-5" />
-                Invalid / Corrupt
-              </button>
-              <button
-                type="button"
-                disabled={voted}
-                onClick={() => handleVote('unsure')}
-                className="flex items-center justify-center gap-2 px-4 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-40 shadow-xs"
-              >
-                <HelpCircle className="w-5 h-5" />
-                Skip / Unsure
-              </button>
+            {/* ✅ SCORE DISPLAY */}
+            <div className="mt-4 p-3 bg-gray-50 border rounded text-sm">
+              <p>
+                ✅ {stats.correct} | ❌ {stats.incorrect} | 🤔 {stats.unsure}
+              </p>
+
+              <p className={confidenceColor}>
+                Confidence: {(confidence * 100).toFixed(1)}%
+              </p>
+
+              <p>Status: {label}</p>
             </div>
           </div>
-        </div>
+
+          {/* ✅ VOTING */}
+          <div className="grid grid-cols-3 gap-3">
+            <button disabled={voted} onClick={() => handleVote('correct')}>
+              👍 Correct
+            </button>
+
+            <button disabled={voted} onClick={() => handleVote('incorrect')}>
+              👎 Incorrect
+            </button>
+
+            <button disabled={voted} onClick={() => handleVote('unsure')}>
+              🤔 Unsure
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
 };
+
 
 const StyledSelect = ({ id, label, value, onChange, children }) => (
   <div className="space-y-1">
@@ -1339,6 +1477,59 @@ export default function App() {
 
   const [benchmarkCatalog, setBenchmarkCatalog] = useState(FALLBACK_BENCHMARKS);
 
+
+  const exportGoldDataset = async () => {
+  try {
+    const collections = [
+      "text_contributions",
+      "audio_contributions"
+    ];
+
+    let results = [];
+
+    for (const collectionName of collections) {
+      const collectionRef = collection(
+        db,
+        `artifacts/${appId}/public/data/${collectionName}`
+      );
+
+      const q = query(
+        collectionRef,
+        where("isGold", "==", true)
+      );
+
+      const snapshot = await getDocs(q);
+
+      snapshot.docs.forEach(docSnap => {
+        results.push({
+          id: docSnap.id,
+          type:
+            collectionName === "audio_contributions"
+              ? "audio"
+              : "text",
+          ...docSnap.data()
+        });
+      });
+    }
+
+    const blob = new Blob(
+      [JSON.stringify(results, null, 2)],
+      { type: "application/json" }
+    );
+
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "burushaski_gold_dataset.json";
+    a.click();
+
+    URL.revokeObjectURL(url);
+
+  } catch (err) {
+    console.error("Gold export failed:", err);
+  }
+};
   // Initialize Firebase clients once (avoid setState inside effects)
   const firebaseApp = useMemo(() => {
     try {
