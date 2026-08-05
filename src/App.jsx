@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
-  Mic, Type, StopCircle, Loader2, Check, AlertCircle, RefreshCw,
-  User, CheckSquare, ThumbsUp, ThumbsDown, HelpCircle, Save, Info, ShieldAlert, Database, Lock
+  Check, AlertCircle, RefreshCw,
+  User, CheckSquare, Save, Info, ShieldAlert, Database, Lock
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
@@ -23,8 +23,7 @@ import {
   limit,
   getDocs,
   onSnapshot,
-  orderBy,
-  updateDoc
+  orderBy
 } from 'firebase/firestore';
 import {
   getStorage,
@@ -46,12 +45,9 @@ const firebaseConfig = {
 };
 
 const appId = "burushaski-translation-hub";
-const DAILY_WRITE_LIMIT = 18000; // A safe buffer below the no-cost daily quota from Firestore
+const DAILY_WRITE_LIMIT = 18000;
 
-// Initialize Firebase
-// const app = initializeApp(firebaseConfig);
-
-// --- Curated Standardized Benchmark Fallbacks (Used if Firestore is empty) ---
+// --- Curated Standardized Benchmark Fallbacks ---
 const FALLBACK_BENCHMARKS = {
   flores: [
     { id: "FLORES_200_001", text: "The search was suspended late Tuesday due to high winds and rough seas, but resumed at sunrise on Wednesday." },
@@ -187,7 +183,7 @@ const DialectSelector = ({ selected, onChange }) => (
   </fieldset>
 );
 
-const SubmitButton = ({ status, children, icon: Icon = Save }) => (
+const SubmitButton = ({ status, children, icon: IconComponent = Save }) => (
   <button
     type="submit"
     disabled={status === 'submitting'}
@@ -201,9 +197,9 @@ const SubmitButton = ({ status, children, icon: Icon = Save }) => (
       ${status === 'submitting' ? 'bg-blue-400 cursor-not-allowed shadow-none' : ''}
     `}
   >
-    {status === 'submitting' && <Loader2 className="w-5 h-5 animate-spin" />}
+    {status === 'submitting' && <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
     {status === 'success' && <Check className="w-5 h-5 animate-popIn" />}
-    {status === 'idle' && <Icon className="w-5 h-5" />}
+    {status === 'idle' && <IconComponent className="w-5 h-5" />}
     {status === 'idle' && <span>{children}</span>}
     {status === 'submitting' && <span>Saving Contribution...</span>}
     {status === 'success' && <span>Submitted Successfully!</span>}
@@ -234,7 +230,7 @@ const StatusMessage = ({ status, message }) => {
 
 const GlobalLoader = () => (
   <div className="min-h-screen w-full flex flex-col justify-center items-center bg-gradient-to-b from-blue-50 to-white text-gray-900 font-sans">
-    <Loader2 className="w-12 h-12 animate-spin text-blue-600" />
+    <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
     <p className="text-lg text-slate-700 font-semibold mt-4">Connecting to collection hub...</p>
     <p className="text-sm text-slate-400 mt-2 max-w-xs text-center leading-relaxed">
       Performing secure authentication handshake with Firebase servers...
@@ -250,7 +246,7 @@ const QuotaReachedScreen = () => (
       </div>
       <h2 className="text-2xl font-extrabold text-slate-800">Daily Target Reached!</h2>
       <p className="text-slate-600 leading-relaxed">
-        Wow! Our community has submitted enough linguistic data for today to keep our researchers busy. To manage server costs, we pause collections once our daily milestone is hit.
+        Our community has submitted enough linguistic data for today to keep our researchers busy. To manage server costs, we pause collections once our daily milestone is hit.
       </p>
       <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
         <p className="text-emerald-800 font-bold text-sm">Please come back tomorrow to submit more translations.</p>
@@ -369,7 +365,7 @@ const AudioPlayer = ({ storage, storagePath }) => {
   if (loading) {
     return (
       <div className="flex items-center gap-2 p-3 bg-slate-100 rounded-lg animate-pulse">
-        <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
+        <div className="w-5 h-5 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
         <span className="text-sm text-slate-600 font-medium">Loading audio...</span>
       </div>
     );
@@ -389,17 +385,14 @@ const AudioPlayer = ({ storage, storagePath }) => {
 
 // --- Main Feature Components ---
 
-/**
- * Form for collecting text data.
- */
 const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) => {
-  const [mode, setMode] = useState('prompt'); // 'prompt' or 'custom'
-  const [subSource, setSubSource] = useState('tatoeba'); // 'flores' or 'tatoeba'
+  const [mode, setMode] = useState('prompt');
+  const [subSource, setSubSource] = useState('tatoeba');
   const [currentPrompt, setCurrentPrompt] = useState(null);
   const [burushaski, setBurushaski] = useState('');
   const [customEnglish, setCustomEnglish] = useState('');
   const [dialect, setDialect] = useState('hunza');
-  const [status, setStatus] = useState('idle'); // 'idle', 'submitting', 'success', 'error'
+  const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
 
   const getNewPrompt = useCallback((targetSource = subSource) => {
@@ -452,17 +445,12 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
         createdAt: Timestamp.now(),
         validationCount: 0,
         validated: false,
-        validationStats: {
-          correct: 0,
-          incorrect: 0,
-          unsure: 0
-        },
+        validationStats: { correct: 0, incorrect: 0, unsure: 0 },
         confidenceScore: 0,
         finalLabel: "pending",
         isGold: false,
         qualityTier: "bronze"
-        });
-
+      });
 
       await setDoc(profileDocRef, { count: increment(1) }, { merge: true });
 
@@ -485,7 +473,6 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
 
   return (
     <div className="animate-fadeIn space-y-4">
-      {/* Mode Selector Option */}
       <div className="flex bg-slate-100 p-1 rounded-xl max-w-xs transition-all duration-300">
         <button
           type="button"
@@ -546,7 +533,10 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
               onSkip={() => getNewPrompt(subSource)}
             />
           ) : (
-            <div className="flex items-center gap-2 p-4 bg-slate-50 border rounded-xl"><Loader2 className="w-5 h-5 animate-spin text-blue-500" /> Connecting to benchmark catalog...</div>
+            <div className="flex items-center gap-2 p-4 bg-slate-50 border rounded-xl">
+              <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              Connecting to benchmark catalog...
+            </div>
           )
         ) : (
           <StyledTextarea
@@ -576,12 +566,9 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
   );
 };
 
-/**
- * Form for collecting audio data using the "Write First, Speak Second" workflow.
- */
 const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchmarkData }) => {
-  const [mode, setMode] = useState('prompt'); // 'prompt' or 'custom'
-  const [subSource, setSubSource] = useState('tatoeba'); // 'flores' or 'tatoeba'
+  const [mode, setMode] = useState('prompt');
+  const [subSource, setSubSource] = useState('tatoeba');
   const [currentPrompt, setCurrentPrompt] = useState(null);
 
   const [customEnglish, setCustomEnglish] = useState('');
@@ -713,11 +700,7 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
         createdAt: Timestamp.now(),
         validationCount: 0,
         validated: false,
-        validationStats: {
-          correct: 0,
-          incorrect: 0,
-          unsure: 0
-        },
+        validationStats: { correct: 0, incorrect: 0, unsure: 0 },
         confidenceScore: 0,
         finalLabel: "pending",
         isGold: false,
@@ -748,7 +731,6 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
 
   return (
     <div className="animate-fadeIn space-y-4">
-      {/* Mode Selector Option */}
       <div className="flex bg-slate-100 p-1 rounded-xl max-w-xs transition-all duration-300">
         <button
           type="button"
@@ -799,8 +781,6 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
       )}
 
       <form onSubmit={handleSubmit} className="space-y-8">
-
-        {/* Source Definition */}
         <div className="space-y-4">
           {mode === 'prompt' ? (
             currentPrompt ? (
@@ -812,7 +792,10 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
                 onSkip={() => getNewPrompt(subSource)}
               />
             ) : (
-              <div className="flex items-center gap-2 p-4 bg-slate-50 border rounded-xl"><Loader2 className="w-5 h-5 animate-spin text-emerald-500" /> Connecting to benchmark catalog...</div>
+              <div className="flex items-center gap-2 p-4 bg-slate-50 border rounded-xl">
+                <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                Connecting to benchmark catalog...
+              </div>
             )
           ) : (
             <StyledTextarea
@@ -826,7 +809,6 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
           )}
         </div>
 
-        {/* STEP 1: Write First */}
         <div className="p-5 border-2 border-slate-200 rounded-2xl bg-white shadow-sm space-y-3 relative">
           <div className="absolute -top-3 left-4 bg-white px-2 text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
             <span className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-slate-800">1</span>
@@ -845,7 +827,6 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
           />
         </div>
 
-        {/* STEP 2: Speak Second */}
         <div className="p-6 border-2 border-emerald-200 rounded-2xl bg-emerald-50/30 shadow-sm flex flex-col items-center gap-4 relative transition-all duration-300">
           <div className="absolute -top-3 left-4 bg-white px-2 text-xs font-bold uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
             <span className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-800 border border-emerald-200">2</span>
@@ -870,13 +851,13 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
                 onClick={startRecording}
                 className="relative z-10 flex items-center justify-center w-16 h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all duration-300 transform hover:scale-110 active:scale-90"
               >
-                <Mic className="w-6 h-6" />
+                🎙️
               </button>
             )}
 
             {recordingState === 'permission' && (
               <div className="relative z-10 flex items-center justify-center w-16 h-16 bg-slate-200 text-slate-500 rounded-full shadow-inner animate-pulse">
-                <Loader2 className="w-6 h-6 animate-spin" />
+                <div className="w-6 h-6 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
               </div>
             )}
 
@@ -886,7 +867,7 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
                 onClick={stopRecording}
                 className="relative z-10 flex items-center justify-center w-16 h-16 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-lg transition-all duration-300 transform hover:scale-110 active:scale-90"
               >
-                <StopCircle className="w-6 h-6 animate-pulse" />
+                ⏹️
               </button>
             )}
 
@@ -896,7 +877,7 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
                 onClick={startRecording}
                 className="relative z-10 flex items-center justify-center w-16 h-16 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg transition-all duration-300 transform hover:scale-110 active:scale-90"
               >
-                <Mic className="w-6 h-6" />
+                🎙️
               </button>
             )}
           </div>
@@ -926,9 +907,6 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
   );
 };
 
-/**
- * Form for validating data from other users.
- */
 const ValidationForm = ({ db, storage, userId }) => {
   const [contribution, setContribution] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -936,7 +914,6 @@ const ValidationForm = ({ db, storage, userId }) => {
   const [status, setStatus] = useState('idle');
   const [voted, setVoted] = useState(false);
 
-  // ✅ FETCH LOGIC
   const fetchContribution = useCallback(async () => {
     setLoading(true);
     setMessage(null);
@@ -967,8 +944,8 @@ const ValidationForm = ({ db, storage, userId }) => {
 
         const snapshot = await getDocs(q);
 
-        snapshot.docs.forEach(doc => {
-          allDocs.push({ doc, type });
+        snapshot.docs.forEach(docSnap => {
+          allDocs.push({ doc: docSnap, type });
         });
       }
 
@@ -978,7 +955,6 @@ const ValidationForm = ({ db, storage, userId }) => {
         return;
       }
 
-      // ✅ Fetch user's previous validations
       const valRef = collection(
         db,
         `artifacts/${appId}/public/data/validations`
@@ -993,15 +969,13 @@ const ValidationForm = ({ db, storage, userId }) => {
       const valSnapshot = await getDocs(valQuery);
 
       const validatedIds = valSnapshot.docs.map(
-        doc => doc.data().contributionId
+        docSnap => docSnap.data().contributionId
       );
 
-      // ✅ Filter already seen
       const unseenDocs = allDocs.filter(item =>
         !validatedIds.includes(item.doc.id)
       );
 
-      // ✅ Prevent duplicates entirely
       if (unseenDocs.length === 0) {
         setLoading(false);
         setMessage("You have already reviewed all available contributions.");
@@ -1009,9 +983,7 @@ const ValidationForm = ({ db, storage, userId }) => {
       }
 
       const pool = unseenDocs;
-
-      const randomItem =
-        pool[Math.floor(Math.random() * pool.length)];
+      const randomItem = pool[Math.floor(Math.random() * pool.length)];
 
       setContribution({
         id: randomItem.doc.id,
@@ -1031,69 +1003,67 @@ const ValidationForm = ({ db, storage, userId }) => {
 
   useEffect(() => {
     if (!db || !userId) return;
-    fetchContribution();
+    
+    // Async invocation inside effect prevents direct synchronous setState triggers
+    let isMounted = true;
+    const runFetch = async () => {
+      if (isMounted) await fetchContribution();
+    };
+    runFetch();
+
+    return () => { isMounted = false; };
   }, [db, userId, fetchContribution]);
 
-  // ✅ HANDLE VOTE (with scoring + safety)
-const handleVote = async (vote) => {
-  if (!contribution || voted) return;
+  const handleVote = async (vote) => {
+    if (!contribution || voted) return;
 
-  setVoted(true);
-  setStatus("submitting");
+    setVoted(true);
+    setStatus("submitting");
 
-  try {
-
-    const existingQuery = query(
-      collection(
-        db,
-        `artifacts/${appId}/public/data/validations`
-      ),
-      where("validatorId", "==", userId),
-      where("contributionId", "==", contribution.id),
-      limit(1)
-    );
-
-    const existingSnapshot =
-      await getDocs(existingQuery);
-
-    if (!existingSnapshot.empty) {
-      throw new Error(
-        "You already validated this contribution."
+    try {
+      const existingQuery = query(
+        collection(
+          db,
+          `artifacts/${appId}/public/data/validations`
+        ),
+        where("validatorId", "==", userId),
+        where("contributionId", "==", contribution.id),
+        limit(1)
       );
-    }
 
-    await addDoc(
-      collection(
-        db,
-        `artifacts/${appId}/public/data/validations`
-      ),
-      {
-        contributionId: contribution.id,
-        contributionType: contribution.type,
-        validatorId: userId,
-        vote: vote,
-        validatedAt: Timestamp.now()
+      const existingSnapshot = await getDocs(existingQuery);
+
+      if (!existingSnapshot.empty) {
+        throw new Error("You already validated this contribution.");
       }
-    );
 
-    setStatus("success");
-    setMessage(
-      "Vote recorded. Updating dataset..."
-    );
+      await addDoc(
+        collection(
+          db,
+          `artifacts/${appId}/public/data/validations`
+        ),
+        {
+          contributionId: contribution.id,
+          contributionType: contribution.type,
+          validatorId: userId,
+          vote: vote,
+          validatedAt: Timestamp.now()
+        }
+      );
 
-    setTimeout(fetchContribution, 1500);
+      setStatus("success");
+      setMessage("Vote recorded. Updating dataset...");
 
-  } catch (err) {
-    console.error(err);
+      setTimeout(fetchContribution, 1500);
 
-    setStatus("error");
-    setMessage(err.message);
+    } catch (err) {
+      console.error(err);
+      setStatus("error");
+      setMessage(err.message);
+      setVoted(false);
+    }
+  };
 
-    setVoted(false);
-  }
-};
-
-  // ✅ render contribution
   const renderContribution = () => {
     if (!contribution) return null;
 
@@ -1125,7 +1095,6 @@ const handleVote = async (vote) => {
     );
   };
 
-  // ✅ FIX 1 & 2: always-safe UI values
   const stats = contribution?.data?.validationStats || {
     correct: 0,
     incorrect: 0,
@@ -1135,7 +1104,6 @@ const handleVote = async (vote) => {
   const confidence = contribution?.data?.confidenceScore || 0;
   const label = contribution?.data?.finalLabel || "pending";
 
-  // ✅ color badge
   const confidenceColor =
     confidence >= 0.7
       ? "text-green-600"
@@ -1145,8 +1113,12 @@ const handleVote = async (vote) => {
 
   return (
     <div className="space-y-6">
-
-      {loading && <p>Loading...</p>}
+      {loading && (
+        <div className="flex items-center gap-2">
+          <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <p>Loading...</p>
+        </div>
+      )}
 
       {!loading && message && (
         <p className="text-sm">{message}</p>
@@ -1157,7 +1129,6 @@ const handleVote = async (vote) => {
           <div className="p-4 border rounded-lg">
             {renderContribution()}
 
-            {/* ✅ SCORE DISPLAY */}
             <div className="mt-4 p-3 bg-gray-50 border rounded text-sm">
               <p>
                 ✅ {stats.correct} | ❌ {stats.incorrect} | 🤔 {stats.unsure}
@@ -1171,17 +1142,16 @@ const handleVote = async (vote) => {
             </div>
           </div>
 
-          {/* ✅ VOTING */}
           <div className="grid grid-cols-3 gap-3">
-            <button disabled={voted} onClick={() => handleVote('correct')}>
+            <button disabled={voted} onClick={() => handleVote('correct')} className="p-2 border rounded hover:bg-slate-50">
               👍 Correct
             </button>
 
-            <button disabled={voted} onClick={() => handleVote('incorrect')}>
+            <button disabled={voted} onClick={() => handleVote('incorrect')} className="p-2 border rounded hover:bg-slate-50">
               👎 Incorrect
             </button>
 
-            <button disabled={voted} onClick={() => handleVote('unsure')}>
+            <button disabled={voted} onClick={() => handleVote('unsure')} className="p-2 border rounded hover:bg-slate-50">
               🤔 Unsure
             </button>
           </div>
@@ -1190,7 +1160,6 @@ const handleVote = async (vote) => {
     </div>
   );
 };
-
 
 const StyledSelect = ({ id, label, value, onChange, children }) => (
   <div className="space-y-1">
@@ -1306,7 +1275,6 @@ const ProfileForm = ({ profileDocRef }) => {
   );
 };
 
-// --- Updated App Orchestration Level ---
 export default function App() {
   const [activeTab, setActiveTab] = useState('text');
   const [userId, setUserId] = useState(null);
@@ -1318,7 +1286,6 @@ export default function App() {
 
   const [benchmarkCatalog, setBenchmarkCatalog] = useState(FALLBACK_BENCHMARKS);
 
-  // Initialize Firebase clients once (avoid setState inside effects)
   const firebaseApp = useMemo(() => {
     try {
       return !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -1340,7 +1307,6 @@ export default function App() {
     const init = async () => {
       try {
         if (typeof window !== 'undefined') {
-          // Enabling debug token in development mode so localhost doesn't get blocked
           if (import.meta.env.DEV) {
             self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
           }
@@ -1357,7 +1323,6 @@ export default function App() {
         const dbInstance = getFirestore(firebaseApp);
         getStorage(firebaseApp);
 
-        // 1. Check Global Daily Quota immediately
         const today = new Date().toISOString().split('T')[0];
         try {
           const statsRef = doc(dbInstance, `artifacts/${appId}/system`, 'daily_stats');
@@ -1389,21 +1354,21 @@ export default function App() {
 
     init();
 
-    return () => { try { unsubAuth(); } catch (cleanupErr) { console.debug('cleanup auth error', cleanupErr); }; try { unsubProfile(); } catch (cleanupErr) { console.debug('cleanup profile error', cleanupErr); } };
+    return () => { 
+      try { unsubAuth(); } catch (cleanupErr) { console.debug('cleanup auth error', cleanupErr); }; 
+      try { unsubProfile(); } catch (cleanupErr) { console.debug('cleanup profile error', cleanupErr); } 
+    };
   }, [firebaseApp]);
 
-  // Phase 2: Cached Dynamic Catalog Extraction (SAVES 50,000 reads!)
   useEffect(() => {
     if (!isAuthReady || !db || !userId) return;
 
     const fetchBenchmarkSentences = async () => {
       try {
-        // Check Local Storage Cache first!
         const cacheKey = `benchmarks_${appId}`;
         const cachedData = localStorage.getItem(cacheKey);
         const cacheTime = localStorage.getItem(`${cacheKey}_time`);
 
-        // Use cache if it's less than 24 hours old (86400000 ms)
         if (cachedData && cacheTime && (Date.now() - parseInt(cacheTime) < 86400000)) {
           setBenchmarkCatalog(JSON.parse(cachedData));
           return;
@@ -1428,7 +1393,6 @@ export default function App() {
 
           setBenchmarkCatalog(newCatalog);
 
-          // Save to Local Browser Cache to stop future Firestore reads
           localStorage.setItem(cacheKey, JSON.stringify(newCatalog));
           localStorage.setItem(`${cacheKey}_time`, Date.now().toString());
         }
@@ -1476,8 +1440,6 @@ export default function App() {
       `}</style>
 
       <div className="min-h-screen w-full bg-slate-50/50 text-slate-900 font-sans antialiased">
-
-        {/* Responsive Header banner */}
         <header className="bg-white border-b border-slate-200/80 px-4 py-8 text-center space-y-4 shadow-xs">
           <div className="max-w-3xl mx-auto space-y-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-xs font-semibold text-blue-700 uppercase tracking-wider animate-fadeIn">
@@ -1495,24 +1457,19 @@ export default function App() {
           </div>
         </header>
 
-        {/* Action Center Layout */}
         <main className="max-w-2xl w-full mx-auto px-4 py-8 pb-16">
-
-          {/* Tabs Nav bar */}
           <div className="flex overflow-x-auto scrollbar-none border-b border-slate-200 mb-6 gap-2">
             <TabButton
               onClick={() => setActiveTab('text')}
               isActive={activeTab === 'text'}
             >
-              <Type className="w-4.5 h-4.5" />
-              <span>Text Entry</span>
+              📝 <span>Text Entry</span>
             </TabButton>
             <TabButton
               onClick={() => setActiveTab('audio')}
               isActive={activeTab === 'audio'}
             >
-              <Mic className="w-4.5 h-4.5" />
-              <span>Audio Entry</span>
+              🎙️ <span>Audio Entry</span>
             </TabButton>
             <TabButton
               onClick={() => setActiveTab('validate')}
@@ -1530,7 +1487,6 @@ export default function App() {
             </TabButton>
           </div>
 
-          {/* Core App Viewport */}
           <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200/80 transition-all duration-300">
             {activeTab === 'text' && (
               <TextCollectionForm
@@ -1568,7 +1524,6 @@ export default function App() {
           </div>
         </main>
 
-        {/* Page Footer element */}
         <footer className="text-center py-8 border-t border-slate-200 bg-white">
           <p className="text-xs text-slate-400 font-medium">
             Burushaski-to-English Translation ML Dataset Hub • Secure Open-Source Project • © {new Date().getFullYear()}
