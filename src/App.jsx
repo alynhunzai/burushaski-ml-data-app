@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   Mic, Type, StopCircle, Loader2, Check, AlertCircle, RefreshCw,
-  User, CheckSquare, ThumbsUp, ThumbsDown, HelpCircle, Save, Info, ShieldAlert, Database
+  User, CheckSquare, ThumbsUp, ThumbsDown, HelpCircle, Save, Info, ShieldAlert, Database, Lock
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
@@ -987,7 +987,7 @@ const ValidationForm = ({ db, storage, userId }) => {
       const valQuery = query(
         valRef,
         where("validatorId", "==", userId),
-        limit(200)
+        limit(1000)
       );
 
       const valSnapshot = await getDocs(valQuery);
@@ -1102,10 +1102,13 @@ const handleVote = async (vote) => {
       };
 
     const updatedStats = {
-      ...currentStats
+      correct: currentStats.correct || 0,
+      incorrect: currentStats.incorrect || 0,
+      unsure: currentStats.unsure || 0
     };
 
-    updatedStats[vote] += 1;
+    updatedStats[vote] =
+      (updatedStats[vote] || 0) + 1;
 
     // ✅ Vote totals
     const totalVotes =
@@ -1145,27 +1148,28 @@ const handleVote = async (vote) => {
     // ✅ Quality tiers
     let qualityTier = "bronze";
 
-    if (confidence >= 0.70) {
+    if (totalVotes >= 3 && confidence >= 0.70) {
       qualityTier = "silver";
     }
 
-    if (confidence >= 0.90) {
+    if (totalVotes >= 5 && confidence >= 0.90) {
       qualityTier = "gold";
     }
 
-    if (confidence >= 0.98) {
+    if (totalVotes >= 10 && confidence >= 0.98) {
       qualityTier = "platinum";
     }
 
     // ✅ Gold dataset eligibility
     const isGold =
       isValidated &&
+      totalVotes >= 5 &&
       confidence >= 0.90 &&
       finalLabel === "correct";
 
     // ✅ Update original contribution
     await updateDoc(contributionRef, {
-      validationCount: increment(1),
+      validationCount: totalVotes,
       validationStats: updatedStats,
       confidenceScore: confidence,
       finalLabel,
@@ -1177,17 +1181,30 @@ const handleVote = async (vote) => {
     // ✅ Automatically promote to Gold Dataset
     // Only do this once
     if (isGold && !contribution.data.isGold) {
-      await addDoc(
-        collection(
-          db,
-          `artifacts/${appId}/public/data/gold_dataset`
-        ),
+      const goldDocRef = doc(
+        db,
+        `artifacts/${appId}/public/data/gold_dataset`,
+        contribution.id
+      );
+
+      await setDoc(
+        goldDocRef,
         {
           sourceContributionId: contribution.id,
 
           contributionType:
             contribution.type,
 
+          userId: contribution.data.userId,
+
+          createdAt: contribution.data.createdAt,
+
+          promotedAt: Timestamp.now(),
+          
+          validated: true,
+
+          isGold: true,
+          
           promptEnglish:
             contribution.data.promptEnglish,
 
@@ -1214,11 +1231,10 @@ const handleVote = async (vote) => {
 
           finalLabel,
 
-          qualityTier,
-
-          promotedAt: Timestamp.now()
-        }
-      );
+          qualityTier
+        },
+        { merge: true }
+        );
     }
 
     // ✅ Success UI
@@ -1478,59 +1494,6 @@ export default function App() {
 
   const [benchmarkCatalog, setBenchmarkCatalog] = useState(FALLBACK_BENCHMARKS);
 
-
-  const exportGoldDataset = async () => {
-  try {
-    const collections = [
-      "text_contributions",
-      "audio_contributions"
-    ];
-
-    let results = [];
-
-    for (const collectionName of collections) {
-      const collectionRef = collection(
-        db,
-        `artifacts/${appId}/public/data/${collectionName}`
-      );
-
-      const q = query(
-        collectionRef,
-        where("isGold", "==", true)
-      );
-
-      const snapshot = await getDocs(q);
-
-      snapshot.docs.forEach(docSnap => {
-        results.push({
-          id: docSnap.id,
-          type:
-            collectionName === "audio_contributions"
-              ? "audio"
-              : "text",
-          ...docSnap.data()
-        });
-      });
-    }
-
-    const blob = new Blob(
-      [JSON.stringify(results, null, 2)],
-      { type: "application/json" }
-    );
-
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "burushaski_gold_dataset.json";
-    a.click();
-
-    URL.revokeObjectURL(url);
-
-  } catch (err) {
-    console.error("Gold export failed:", err);
-  }
-};
   // Initialize Firebase clients once (avoid setState inside effects)
   const firebaseApp = useMemo(() => {
     try {
@@ -1694,13 +1657,13 @@ export default function App() {
         <header className="bg-white border-b border-slate-200/80 px-4 py-8 text-center space-y-4 shadow-xs">
           <div className="max-w-3xl mx-auto space-y-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-xs font-semibold text-blue-700 uppercase tracking-wider animate-fadeIn">
-              <Info className="w-3.5 h-3.5" /> NLP Translation Research Engine
+              <Info className="w-3.5 h-3.5" /> Low-Resource NMT & ASR Corpus Engine
             </span>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight transition-all duration-300">
-              Burushaski Language Hub
+              Burushaski Parallel Corpus Initiative
             </h1>
-            <p className="text-base sm:text-lg text-slate-500 max-w-lg mx-auto leading-relaxed">
-              Help preserve and index dialects from the Hunza & Nagar Valleys for translation model training.
+            <p className="text-base sm:text-lg text-slate-600 max-w-xl mx-auto leading-relaxed">
+              A crowdsourced data collection and validation engine collecting tri-modal parallel data (Text + Speech) to train baseline Neural Machine Translation and Speech Recognition models for language isolates, such as Burushaski.
             </p>
           </div>
           <div className="flex justify-center pt-2">
