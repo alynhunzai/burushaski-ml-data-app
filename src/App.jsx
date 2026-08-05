@@ -1039,15 +1039,10 @@ const handleVote = async (vote) => {
   if (!contribution || voted) return;
 
   setVoted(true);
-  setStatus('submitting');
+  setStatus("submitting");
 
   try {
-    // ✅ Validate vote type
-    if (!["correct", "incorrect", "unsure"].includes(vote)) {
-      throw new Error("Invalid vote type.");
-    }
 
-    // ✅ Prevent duplicate voting
     const existingQuery = query(
       collection(
         db,
@@ -1058,15 +1053,15 @@ const handleVote = async (vote) => {
       limit(1)
     );
 
-    const existingSnapshot = await getDocs(existingQuery);
+    const existingSnapshot =
+      await getDocs(existingQuery);
 
     if (!existingSnapshot.empty) {
       throw new Error(
-        "You have already validated this contribution."
+        "You already validated this contribution."
       );
     }
 
-    // ✅ Save validation record
     await addDoc(
       collection(
         db,
@@ -1076,196 +1071,25 @@ const handleVote = async (vote) => {
         contributionId: contribution.id,
         contributionType: contribution.type,
         validatorId: userId,
-        vote,
+        vote: vote,
         validatedAt: Timestamp.now()
       }
     );
 
-    // ✅ Determine contribution collection
-    const contributionCollection =
-      contribution.type === "text"
-        ? "text_contributions"
-        : "audio_contributions";
-
-    const contributionRef = doc(
-      db,
-      `artifacts/${appId}/public/data/${contributionCollection}`,
-      contribution.id
-    );
-
-    // ✅ Existing statistics
-    const currentStats =
-      contribution.data.validationStats || {
-        correct: 0,
-        incorrect: 0,
-        unsure: 0
-      };
-
-    const updatedStats = {
-      correct: currentStats.correct || 0,
-      incorrect: currentStats.incorrect || 0,
-      unsure: currentStats.unsure || 0
-    };
-
-    updatedStats[vote] =
-      (updatedStats[vote] || 0) + 1;
-
-    // ✅ Vote totals
-    const totalVotes =
-      updatedStats.correct +
-      updatedStats.incorrect +
-      updatedStats.unsure;
-
-    // ✅ Ignore "unsure" votes in confidence score
-    const decisiveVotes =
-      updatedStats.correct +
-      updatedStats.incorrect;
-
-    const confidence =
-      decisiveVotes > 0
-        ? updatedStats.correct / decisiveVotes
-        : 0;
-
-    // ✅ Classification rules
-    let finalLabel = "pending";
-
-    if (totalVotes >= 3) {
-      if (confidence >= 0.7) {
-        finalLabel = "correct";
-      } else if (confidence <= 0.3) {
-        finalLabel = "incorrect";
-      } else {
-        finalLabel = "uncertain";
-      }
-    }
-
-    // ✅ Validation completion rule
-    const MAX_VALIDATIONS = 5;
-
-    const isValidated =
-      totalVotes >= MAX_VALIDATIONS;
-
-    // ✅ Quality tiers
-    let qualityTier = "bronze";
-
-    if (totalVotes >= 3 && confidence >= 0.70) {
-      qualityTier = "silver";
-    }
-
-    if (totalVotes >= 5 && confidence >= 0.90) {
-      qualityTier = "gold";
-    }
-
-    if (totalVotes >= 10 && confidence >= 0.98) {
-      qualityTier = "platinum";
-    }
-
-    // ✅ Gold dataset eligibility
-    const isGold =
-      isValidated &&
-      totalVotes >= 5 &&
-      confidence >= 0.90 &&
-      finalLabel === "correct";
-
-    // ✅ Update original contribution
-    await updateDoc(contributionRef, {
-      validationCount: totalVotes,
-      validationStats: updatedStats,
-      confidenceScore: confidence,
-      finalLabel,
-      validated: isValidated,
-      isGold,
-      qualityTier
-    });
-
-    // ✅ Automatically promote to Gold Dataset
-    // Only do this once
-    if (isGold && !contribution.data.isGold) {
-      const goldDocRef = doc(
-        db,
-        `artifacts/${appId}/public/data/gold_dataset`,
-        contribution.id
-      );
-
-      await setDoc(
-        goldDocRef,
-        {
-          sourceContributionId: contribution.id,
-
-          contributionType:
-            contribution.type,
-
-          userId: contribution.data.userId,
-
-          createdAt: contribution.data.createdAt,
-
-          promotedAt: Timestamp.now(),
-          
-          validated: true,
-
-          isGold: true,
-          
-          promptEnglish:
-            contribution.data.promptEnglish,
-
-          translationBurushaski:
-            contribution.data.translationBurushaski,
-
-          dialect:
-            contribution.data.dialect,
-
-          storagePath:
-            contribution.data.storagePath || null,
-
-          benchmarkSource:
-            contribution.data.benchmarkSource || null,
-
-          benchmarkId:
-            contribution.data.benchmarkId || null,
-
-          validationCount: totalVotes,
-
-          validationStats: updatedStats,
-
-          confidenceScore: confidence,
-
-          finalLabel,
-
-          qualityTier
-        },
-        { merge: true }
-        );
-    }
-
-    // ✅ Success UI
-    setStatus('success');
+    setStatus("success");
     setMessage(
-      "Vote recorded! Loading next contribution..."
+      "Vote recorded. Updating dataset..."
     );
 
-    setTimeout(() => {
-      fetchContribution();
-    }, 1500);
+    setTimeout(fetchContribution, 1500);
 
   } catch (err) {
-    console.error(
-      "Error submitting validation:",
-      err
-    );
+    console.error(err);
 
-    setStatus('error');
-
-    setMessage(
-      err.message ||
-      "Could not submit vote. Please try again."
-    );
+    setStatus("error");
+    setMessage(err.message);
 
     setVoted(false);
-
-    setTimeout(
-      () => setStatus('idle'),
-      3000
-    );
   }
 };
 
