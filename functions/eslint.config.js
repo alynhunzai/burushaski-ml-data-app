@@ -1,8 +1,9 @@
-const js = require("@eslint/js");
-const googleConfig = require("eslint-config-google");
+import { configs } from "@eslint/js";
+import { rules as _rules } from "eslint-config-google";
+import globals from "globals";
 
-module.exports = [
-  js.configs.recommended,
+export default [
+  configs.recommended,
   {
     files: ["**/*.js"],
     languageOptions: {
@@ -14,10 +15,12 @@ module.exports = [
         require: "readonly",
         module: "readonly",
         __dirname: "readonly",
+        ...globals.browser,
+        ...globals.node,
       },
     },
     rules: {
-      ...googleConfig.rules,
+      ..._rules,
       "no-restricted-globals": ["error", "name", "length"],
       "prefer-arrow-callback": "error",
       "quotes": ["error", "double", {"allowTemplateLiterals": true}],
