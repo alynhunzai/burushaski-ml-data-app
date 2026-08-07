@@ -102,6 +102,8 @@ const TabButton = ({ children, onClick, isActive }) => (
   </button>
 );
 
+// --- Prompt Display Component ---
+
 const PromptDisplay = ({ label, prompt, sourceTag, sourceId, onSkip }) => (
   <div className="space-y-1">
     <div className="flex justify-between items-center">
@@ -133,6 +135,8 @@ const PromptDisplay = ({ label, prompt, sourceTag, sourceId, onSkip }) => (
   </div>
 );
 
+// --- Styled Textarea Component ---
+
 const StyledTextarea = ({ id, label, value, onChange, placeholder, rows = 4 }) => (
   <div className="space-y-1">
     <label htmlFor={id} className="block text-sm font-semibold text-gray-700 uppercase tracking-wider">
@@ -149,6 +153,8 @@ const StyledTextarea = ({ id, label, value, onChange, placeholder, rows = 4 }) =
     />
   </div>
 );
+
+// --- Dialect Selector Component ---
 
 const DialectSelector = ({ selected, onChange }) => (
   <fieldset className="space-y-2">
@@ -183,6 +189,8 @@ const DialectSelector = ({ selected, onChange }) => (
   </fieldset>
 );
 
+// --- Submit Button Component ---
+
 const SubmitButton = ({ status, children, icon: IconComponent = Save }) => (
   <button
     type="submit"
@@ -206,6 +214,8 @@ const SubmitButton = ({ status, children, icon: IconComponent = Save }) => (
   </button>
 );
 
+// --- Status Message Component ---
+
 const StatusMessage = ({ status, message }) => {
   if (status === 'idle' || !message) return null;
 
@@ -228,6 +238,8 @@ const StatusMessage = ({ status, message }) => {
   );
 };
 
+// --- Global Loader Component ---
+
 const GlobalLoader = () => (
   <div className="min-h-screen w-full flex flex-col justify-center items-center bg-gradient-to-b from-blue-50 to-white text-gray-900 font-sans">
     <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -237,6 +249,8 @@ const GlobalLoader = () => (
     </p>
   </div>
 );
+
+// --- Quota Reached Screen Component ---
 
 const QuotaReachedScreen = () => (
   <div className="min-h-screen w-full flex flex-col justify-center items-center bg-slate-50 px-4 py-8 font-sans text-center">
@@ -254,6 +268,8 @@ const QuotaReachedScreen = () => (
     </div>
   </div>
 );
+
+// --- Connection Diagnostic Screen Component ---
 
 const ConnectionDiagnosticScreen = ({ errorMsg }) => {
   const isUsingMockKey = firebaseConfig.apiKey === "MOCK_API_KEY_FOR_PREVIEW_MODE";
@@ -318,6 +334,8 @@ const ConnectionDiagnosticScreen = ({ errorMsg }) => {
   );
 };
 
+// --- Contribution Counter Component ---
+
 const ContributionCounter = ({ count }) => {
   const [animate, setAnimate] = useState(false);
 
@@ -338,6 +356,8 @@ const ContributionCounter = ({ count }) => {
     </div>
   );
 };
+
+// --- Audio Player Component ---
 
 const AudioPlayer = ({ storage, storagePath }) => {
   const [audioUrl, setAudioUrl] = useState(null);
@@ -383,7 +403,7 @@ const AudioPlayer = ({ storage, storagePath }) => {
   return <audio controls src={audioUrl} className="w-full focus:outline-none rounded-lg" />;
 };
 
-// --- Main Feature Components ---
+// --- Text Collection Form Component ---
 
 const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) => {
   const [mode, setMode] = useState('prompt');
@@ -566,6 +586,8 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
   );
 };
 
+// --- Audio Collection Form Component ---
+
 const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchmarkData }) => {
   const [mode, setMode] = useState('prompt');
   const [subSource, setSubSource] = useState('tatoeba');
@@ -625,7 +647,16 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
       };
 
       mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        const mimeType =
+          mediaRecorderRef.current.mimeType ||
+          'audio/webm';
+
+        const blob = new Blob(
+          audioChunksRef.current,
+          {
+            type: mimeType
+          }
+        );
         const url = URL.createObjectURL(blob);
         setAudioBlob(blob);
         setAudioURL(url);
@@ -680,7 +711,13 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
     setMessage('');
 
     try {
-      const audioFileName = `${userId}_${new Date().getTime()}.wav`;
+      const extension =
+        audioBlob.type.includes('webm')
+          ? 'webm'
+          : 'wav';
+
+      const audioFileName =
+        `${userId}_${Date.now()}.${extension}`;
       const storagePath = `artifacts/${appId}/public/audio/${audioFileName}`;
       const storageRef = ref(storage, storagePath);
       await uploadBytes(storageRef, audioBlob);
@@ -907,6 +944,8 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
   );
 };
 
+// --- Validation Form Component ---
+
 const ValidationForm = ({ db, storage, userId }) => {
   const [contribution, setContribution] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -1014,6 +1053,8 @@ const ValidationForm = ({ db, storage, userId }) => {
     return () => { isMounted = false; };
   }, [db, userId, fetchContribution]);
 
+  // --- Voting Handler ---
+
   const handleVote = async (vote) => {
     if (!contribution || voted) return;
 
@@ -1021,35 +1062,19 @@ const ValidationForm = ({ db, storage, userId }) => {
     setStatus("submitting");
 
     try {
-      const existingQuery = query(
-        collection(
-          db,
-          `artifacts/${appId}/public/data/validations`
-        ),
-        where("validatorId", "==", userId),
-        where("contributionId", "==", contribution.id),
-        limit(1)
+      const validationDocRef = doc(
+        db,
+        `artifacts/${appId}/public/data/validations`,
+        `${contribution.id}_${userId}`
       );
 
-      const existingSnapshot = await getDocs(existingQuery);
-
-      if (!existingSnapshot.empty) {
-        throw new Error("You already validated this contribution.");
-      }
-
-      await addDoc(
-        collection(
-          db,
-          `artifacts/${appId}/public/data/validations`
-        ),
-        {
-          contributionId: contribution.id,
-          contributionType: contribution.type,
-          validatorId: userId,
-          vote: vote,
-          validatedAt: Timestamp.now()
-        }
-      );
+      await setDoc(validationDocRef, {
+        contributionId: contribution.id,
+        contributionType: contribution.type,
+        validatorId: userId,
+        vote,
+        validatedAt: Timestamp.now()
+      });
 
       setStatus("success");
       setMessage("Vote recorded. Updating dataset...");
@@ -1160,6 +1185,8 @@ const ValidationForm = ({ db, storage, userId }) => {
     </div>
   );
 };
+
+// --- Profile Form Component ---
 
 const StyledSelect = ({ id, label, value, onChange, children }) => (
   <div className="space-y-1">
@@ -1275,6 +1302,8 @@ const ProfileForm = ({ profileDocRef }) => {
   );
 };
 
+// --- Main App Component ---
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('text');
   const [userId, setUserId] = useState(null);
@@ -1285,6 +1314,8 @@ export default function App() {
   const [isQuotaMet, setIsQuotaMet] = useState(false);
 
   const [benchmarkCatalog, setBenchmarkCatalog] = useState(FALLBACK_BENCHMARKS);
+
+  // --- Firebase Initialization ---
 
   const firebaseApp = useMemo(() => {
     try {
