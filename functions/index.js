@@ -1,8 +1,17 @@
-const {onDocumentCreated} = require("firebase-functions/v2/firestore");
-const admin = require("firebase-admin");
+const { onDocumentCreated } =
+  require("firebase-functions/v2/firestore");
+
+const admin =
+  require("firebase-admin");
+
+const { getFirestore } =
+  require("firebase-admin/firestore");
 
 admin.initializeApp();
 
+const db = getFirestore();
+const { getFirestore, FieldValue } =
+  require("firebase-admin/firestore");
 exports.processValidation = onDocumentCreated(
     {
       region: "asia-southeast1",
@@ -14,6 +23,7 @@ exports.processValidation = onDocumentCreated(
       if (!snap) return;
 
       const validation = snap.data();
+      console.log("Processing validation:", validation);
       const appId = event.params.appId;
       const contributionId = validation.contributionId;
       const contributionType = validation.contributionType;
@@ -23,7 +33,7 @@ exports.processValidation = onDocumentCreated(
           "text_contributions" :
           "audio_contributions";
 
-      const contributionRef = admin.firestore().doc(
+      const contributionRef = db.doc(
           `artifacts/${appId}/public/data/${collectionName}/${contributionId}`,
       );
 
@@ -35,7 +45,7 @@ exports.processValidation = onDocumentCreated(
       //
       // 1. Recalculate all votes for this contribution
       //
-      const validationsSnap = await admin.firestore()
+      const validationsSnap = await db
           .collection(`artifacts/${appId}/public/data/validations`)
           .where("contributionId", "==", contributionId)
           .get();
@@ -57,6 +67,11 @@ exports.processValidation = onDocumentCreated(
       // 2. Calculate totals
       //
       const totalVotes = stats.correct + stats.incorrect + stats.unsure;
+      console.log({
+        contributionId,
+        totalVotes,
+        stats
+      });
       const decisiveVotes = stats.correct + stats.incorrect;
 
       //
@@ -107,6 +122,10 @@ exports.processValidation = onDocumentCreated(
       //
       // 8. Update original contribution
       //
+      console.log(
+        "Updating contribution",
+        contributionId
+      );
       await contributionRef.update({
         validationCount: totalVotes,
         validationStats: stats,
@@ -121,7 +140,11 @@ exports.processValidation = onDocumentCreated(
       // 9. Promote to Gold Dataset
       //
       if (isGold) {
-        const goldRef = admin.firestore().doc(
+        console.log(
+          "Promoting to gold dataset",
+          contributionId
+        );
+        const goldRef = db.doc(
             `artifacts/${appId}/public/data/gold_dataset/${contributionId}`,
         );
 
@@ -131,7 +154,7 @@ exports.processValidation = onDocumentCreated(
               contributionType,
               userId: contribution.userId,
               createdAt: contribution.createdAt,
-              promotedAt: admin.firestore.FieldValue.serverTimestamp(),
+              promotedAt: FieldValue.serverTimestamp(),
               validated: true,
               isGold: true,
               promptEnglish: contribution.promptEnglish,
