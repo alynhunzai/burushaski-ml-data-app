@@ -4,14 +4,13 @@ const { onDocumentCreated } =
 const admin =
   require("firebase-admin");
 
-const { getFirestore } =
+const { getFirestore, FieldValue } =
   require("firebase-admin/firestore");
 
 admin.initializeApp();
 
 const db = getFirestore();
-const { getFirestore, FieldValue } =
-  require("firebase-admin/firestore");
+
 exports.processValidation = onDocumentCreated(
     {
       region: "asia-southeast1",
