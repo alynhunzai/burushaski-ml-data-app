@@ -1,17 +1,14 @@
-const { onDocumentCreated } =
-  require("firebase-functions/v2/firestore");
+import { onDocumentCreated } from "firebase-functions/v2/firestore";
 
-const admin =
-  require("firebase-admin");
+import { initializeApp } from "firebase-admin";
 
-const { getFirestore, FieldValue } =
-  require("firebase-admin/firestore");
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
-admin.initializeApp();
+initializeApp();
 
 const db = getFirestore();
 
-exports.processValidation = onDocumentCreated(
+export const processValidation = onDocumentCreated(
     {
       region: "asia-southeast1",
       document: "artifacts/{appId}/public/data/validations/{validationId}",
@@ -69,7 +66,7 @@ exports.processValidation = onDocumentCreated(
       console.log({
         contributionId,
         totalVotes,
-        stats
+        stats,
       });
       const decisiveVotes = stats.correct + stats.incorrect;
 
