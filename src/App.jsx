@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
-  Check, AlertCircle, RefreshCw,
-  User, CheckSquare, Save, Info, ShieldAlert, Database, Lock
+  Check, Save
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
@@ -102,8 +101,6 @@ const TabButton = ({ children, onClick, isActive }) => (
   </button>
 );
 
-// --- Prompt Display Component ---
-
 const PromptDisplay = ({ label, prompt, sourceTag, sourceId, onSkip }) => (
   <div className="space-y-1">
     <div className="flex justify-between items-center">
@@ -113,7 +110,7 @@ const PromptDisplay = ({ label, prompt, sourceTag, sourceId, onSkip }) => (
         </label>
         {sourceTag && (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 uppercase tracking-tight">
-            <Database className="w-2.5 h-2.5" /> {sourceTag} ({sourceId})
+            💾 {sourceTag} ({sourceId})
           </span>
         )}
       </div>
@@ -124,8 +121,7 @@ const PromptDisplay = ({ label, prompt, sourceTag, sourceId, onSkip }) => (
           className="group flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-all bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-md active:scale-95"
           title="Get a new prompt"
         >
-          <RefreshCw className="w-3.5 h-3.5 group-hover:rotate-180 transition-transform duration-500" />
-          Skip
+          🔄 Skip
         </button>
       )}
     </div>
@@ -134,8 +130,6 @@ const PromptDisplay = ({ label, prompt, sourceTag, sourceId, onSkip }) => (
     </div>
   </div>
 );
-
-// --- Styled Textarea Component ---
 
 const StyledTextarea = ({ id, label, value, onChange, placeholder, rows = 4 }) => (
   <div className="space-y-1">
@@ -153,8 +147,6 @@ const StyledTextarea = ({ id, label, value, onChange, placeholder, rows = 4 }) =
     />
   </div>
 );
-
-// --- Dialect Selector Component ---
 
 const DialectSelector = ({ selected, onChange }) => (
   <fieldset className="space-y-2">
@@ -189,8 +181,6 @@ const DialectSelector = ({ selected, onChange }) => (
   </fieldset>
 );
 
-// --- Submit Button Component ---
-
 const SubmitButton = ({ status, children, icon: IconComponent = Save }) => (
   <button
     type="submit"
@@ -214,31 +204,24 @@ const SubmitButton = ({ status, children, icon: IconComponent = Save }) => (
   </button>
 );
 
-// --- Status Message Component ---
-
 const StatusMessage = ({ status, message }) => {
   if (status === 'idle' || !message) return null;
 
   const isSuccess = status === 'success';
-  const isError = status === 'error';
 
   return (
     <div
       aria-live="polite"
       className={`
         p-4 rounded-xl flex items-start gap-3 text-sm font-medium border animate-popIn
-        ${isSuccess ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : ''}
-        ${isError ? 'bg-rose-50 border-rose-100 text-rose-800' : ''}
+        ${isSuccess ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : 'bg-rose-50 border-rose-100 text-rose-800'}
       `}
     >
-      {isSuccess && <Check className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />}
-      {isError && <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />}
+      <span className="shrink-0 mt-0.5">{isSuccess ? '✅' : '⚠️'}</span>
       <span className="leading-relaxed">{message}</span>
     </div>
   );
 };
-
-// --- Global Loader Component ---
 
 const GlobalLoader = () => (
   <div className="min-h-screen w-full flex flex-col justify-center items-center bg-gradient-to-b from-blue-50 to-white text-gray-900 font-sans">
@@ -250,13 +233,11 @@ const GlobalLoader = () => (
   </div>
 );
 
-// --- Quota Reached Screen Component ---
-
 const QuotaReachedScreen = () => (
   <div className="min-h-screen w-full flex flex-col justify-center items-center bg-slate-50 px-4 py-8 font-sans text-center">
     <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-slate-200 p-8 space-y-6 animate-popIn">
-      <div className="mx-auto w-16 h-16 bg-blue-50 border border-blue-200 rounded-full flex items-center justify-center text-blue-600">
-        <Lock className="w-8 h-8" />
+      <div className="mx-auto w-16 h-16 bg-blue-50 border border-blue-200 rounded-full flex items-center justify-center text-blue-600 text-2xl">
+        🔒
       </div>
       <h2 className="text-2xl font-extrabold text-slate-800">Daily Target Reached!</h2>
       <p className="text-slate-600 leading-relaxed">
@@ -269,8 +250,6 @@ const QuotaReachedScreen = () => (
   </div>
 );
 
-// --- Connection Diagnostic Screen Component ---
-
 const ConnectionDiagnosticScreen = ({ errorMsg }) => {
   const isUsingMockKey = firebaseConfig.apiKey === "MOCK_API_KEY_FOR_PREVIEW_MODE";
 
@@ -278,8 +257,8 @@ const ConnectionDiagnosticScreen = ({ errorMsg }) => {
     <div className="min-h-screen w-full flex flex-col justify-center items-center bg-slate-50 px-4 py-8 font-sans">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-slate-200 p-6 sm:p-8 space-y-6 animate-popIn">
         <div className="flex flex-col items-center text-center space-y-3">
-          <div className="w-16 h-16 bg-rose-50 border border-rose-200 rounded-full flex items-center justify-center text-rose-600">
-            <ShieldAlert className="w-8 h-8" />
+          <div className="w-16 h-16 bg-rose-50 border border-rose-200 rounded-full flex items-center justify-center text-rose-600 text-2xl">
+            🛡️
           </div>
           <h2 className="text-xl sm:text-2xl font-bold text-slate-800">Connection Handshake Failed</h2>
           <p className="text-sm text-slate-500 leading-relaxed">
@@ -334,8 +313,6 @@ const ConnectionDiagnosticScreen = ({ errorMsg }) => {
   );
 };
 
-// --- Contribution Counter Component ---
-
 const ContributionCounter = ({ count }) => {
   const [animate, setAnimate] = useState(false);
 
@@ -356,8 +333,6 @@ const ContributionCounter = ({ count }) => {
     </div>
   );
 };
-
-// --- Audio Player Component ---
 
 const AudioPlayer = ({ storage, storagePath }) => {
   const [audioUrl, setAudioUrl] = useState(null);
@@ -394,7 +369,7 @@ const AudioPlayer = ({ storage, storagePath }) => {
   if (error) {
     return (
       <div className="flex items-center gap-2 p-3 bg-rose-100 rounded-lg">
-        <AlertCircle className="w-5 h-5 text-rose-600" />
+        <span className="text-rose-600">⚠️</span>
         <span className="text-sm text-rose-700 font-medium">{error}</span>
       </div>
     );
@@ -403,7 +378,7 @@ const AudioPlayer = ({ storage, storagePath }) => {
   return <audio controls src={audioUrl} className="w-full focus:outline-none rounded-lg" />;
 };
 
-// --- Text Collection Form Component ---
+// --- Main Feature Components ---
 
 const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) => {
   const [mode, setMode] = useState('prompt');
@@ -586,8 +561,6 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
   );
 };
 
-// --- Audio Collection Form Component ---
-
 const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchmarkData }) => {
   const [mode, setMode] = useState('prompt');
   const [subSource, setSubSource] = useState('tatoeba');
@@ -647,16 +620,7 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
       };
 
       mediaRecorderRef.current.onstop = () => {
-        const mimeType =
-          mediaRecorderRef.current.mimeType ||
-          'audio/webm';
-
-        const blob = new Blob(
-          audioChunksRef.current,
-          {
-            type: mimeType
-          }
-        );
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
         const url = URL.createObjectURL(blob);
         setAudioBlob(blob);
         setAudioURL(url);
@@ -711,13 +675,7 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
     setMessage('');
 
     try {
-      const extension =
-        audioBlob.type.includes('webm')
-          ? 'webm'
-          : 'wav';
-
-      const audioFileName =
-        `${userId}_${Date.now()}.${extension}`;
+      const audioFileName = `${userId}_${new Date().getTime()}.wav`;
       const storagePath = `artifacts/${appId}/public/audio/${audioFileName}`;
       const storageRef = ref(storage, storagePath);
       await uploadBytes(storageRef, audioBlob);
@@ -944,13 +902,10 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
   );
 };
 
-// --- Validation Form Component ---
-
 const ValidationForm = ({ db, storage, userId }) => {
   const [contribution, setContribution] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState(null);
-  const [status, setStatus] = useState('idle');
   const [voted, setVoted] = useState(false);
 
   const fetchContribution = useCallback(async () => {
@@ -958,7 +913,6 @@ const ValidationForm = ({ db, storage, userId }) => {
     setMessage(null);
     setContribution(null);
     setVoted(false);
-    setStatus('idle');
 
     try {
       const types = ['text', 'audio'];
@@ -1034,7 +988,6 @@ const ValidationForm = ({ db, storage, userId }) => {
 
     } catch (err) {
       console.error("Error fetching contribution:", err);
-      setStatus('error');
       setMessage(err.message || "Failed to load data.");
       setLoading(false);
     }
@@ -1042,8 +995,7 @@ const ValidationForm = ({ db, storage, userId }) => {
 
   useEffect(() => {
     if (!db || !userId) return;
-    
-    // Async invocation inside effect prevents direct synchronous setState triggers
+
     let isMounted = true;
     const runFetch = async () => {
       if (isMounted) await fetchContribution();
@@ -1053,37 +1005,48 @@ const ValidationForm = ({ db, storage, userId }) => {
     return () => { isMounted = false; };
   }, [db, userId, fetchContribution]);
 
-  // --- Voting Handler ---
-
   const handleVote = async (vote) => {
     if (!contribution || voted) return;
 
     setVoted(true);
-    setStatus("submitting");
 
     try {
-      const validationDocRef = doc(
-        db,
-        `artifacts/${appId}/public/data/validations`,
-        `${contribution.id}_${userId}`
+      const existingQuery = query(
+        collection(
+          db,
+          `artifacts/${appId}/public/data/validations`
+        ),
+        where("validatorId", "==", userId),
+        where("contributionId", "==", contribution.id),
+        limit(1)
       );
 
-      await setDoc(validationDocRef, {
-        contributionId: contribution.id,
-        contributionType: contribution.type,
-        validatorId: userId,
-        vote,
-        validatedAt: Timestamp.now()
-      });
+      const existingSnapshot = await getDocs(existingQuery);
 
-      setStatus("success");
+      if (!existingSnapshot.empty) {
+        throw new Error("You already validated this contribution.");
+      }
+
+      await addDoc(
+        collection(
+          db,
+          `artifacts/${appId}/public/data/validations`
+        ),
+        {
+          contributionId: contribution.id,
+          contributionType: contribution.type,
+          validatorId: userId,
+          vote: vote,
+          validatedAt: Timestamp.now()
+        }
+      );
+
       setMessage("Vote recorded. Updating dataset...");
 
       setTimeout(fetchContribution, 1500);
 
     } catch (err) {
       console.error(err);
-      setStatus("error");
       setMessage(err.message);
       setVoted(false);
     }
@@ -1186,8 +1149,6 @@ const ValidationForm = ({ db, storage, userId }) => {
   );
 };
 
-// --- Profile Form Component ---
-
 const StyledSelect = ({ id, label, value, onChange, children }) => (
   <div className="space-y-1">
     <label htmlFor={id} className="block text-sm font-semibold text-gray-700 uppercase tracking-wider">
@@ -1260,8 +1221,7 @@ const ProfileForm = ({ profileDocRef }) => {
     <div className="animate-fadeIn space-y-6">
       <div className="space-y-2">
         <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-          <User className="w-6 h-6 text-blue-600" />
-          Demographic Framework
+          👤 Demographic Framework
         </h2>
         <p className="text-sm text-slate-600 leading-relaxed">
           Supplying demographic variables is strictly optional. However, metadata variables significantly reduce biases during machine translation modeling.
@@ -1302,8 +1262,6 @@ const ProfileForm = ({ profileDocRef }) => {
   );
 };
 
-// --- Main App Component ---
-
 export default function App() {
   const [activeTab, setActiveTab] = useState('text');
   const [userId, setUserId] = useState(null);
@@ -1314,8 +1272,6 @@ export default function App() {
   const [isQuotaMet, setIsQuotaMet] = useState(false);
 
   const [benchmarkCatalog, setBenchmarkCatalog] = useState(FALLBACK_BENCHMARKS);
-
-  // --- Firebase Initialization ---
 
   const firebaseApp = useMemo(() => {
     try {
@@ -1385,9 +1341,9 @@ export default function App() {
 
     init();
 
-    return () => { 
-      try { unsubAuth(); } catch (cleanupErr) { console.debug('cleanup auth error', cleanupErr); }; 
-      try { unsubProfile(); } catch (cleanupErr) { console.debug('cleanup profile error', cleanupErr); } 
+    return () => {
+      try { unsubAuth(); } catch (cleanupErr) { console.debug('cleanup auth error', cleanupErr); };
+      try { unsubProfile(); } catch (cleanupErr) { console.debug('cleanup profile error', cleanupErr); }
     };
   }, [firebaseApp]);
 
@@ -1474,7 +1430,7 @@ export default function App() {
         <header className="bg-white border-b border-slate-200/80 px-4 py-8 text-center space-y-4 shadow-xs">
           <div className="max-w-3xl mx-auto space-y-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-xs font-semibold text-blue-700 uppercase tracking-wider animate-fadeIn">
-              <Info className="w-3.5 h-3.5" /> Low-Resource NMT & ASR Corpus Engine
+              ℹ️ Low-Resource NMT &amp; ASR Corpus Engine
             </span>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight transition-all duration-300">
               Burushaski Parallel Corpus Initiative
@@ -1506,15 +1462,13 @@ export default function App() {
               onClick={() => setActiveTab('validate')}
               isActive={activeTab === 'validate'}
             >
-              <CheckSquare className="w-4.5 h-4.5" />
-              <span>Verify Records</span>
+              ☑️ <span>Verify Records</span>
             </TabButton>
             <TabButton
               onClick={() => setActiveTab('profile')}
               isActive={activeTab === 'profile'}
             >
-              <User className="w-4.5 h-4.5" />
-              <span>About You</span>
+              👤 <span>About You</span>
             </TabButton>
           </div>
 
