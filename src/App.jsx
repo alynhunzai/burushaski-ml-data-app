@@ -30,7 +30,7 @@ import {
   uploadBytes,
   getDownloadURL
 } from 'firebase/storage';
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 
 // --- Firebase Configuration ---
 const firebaseConfig = {
@@ -1306,7 +1306,7 @@ export default function App() {
               siteKey: import.meta.env.VITE_RECAPTCHA_SITE_KEY
             });
             initializeAppCheck(firebaseApp, {
-              provider: new ReCaptchaV3Provider(siteKey),
+              provider: new ReCaptchaEnterpriseProvider(siteKey),
               isTokenAutoRefreshEnabled: true
             });
           }
