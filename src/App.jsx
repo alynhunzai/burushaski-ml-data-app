@@ -1300,11 +1300,6 @@ export default function App() {
 
           const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
           if (siteKey) {
-            console.log({
-              projectId: firebaseApp.options.projectId,
-              appId: firebaseApp.options.appId,
-              siteKey: import.meta.env.VITE_RECAPTCHA_SITE_KEY
-            });
             initializeAppCheck(firebaseApp, {
               provider: new ReCaptchaEnterpriseProvider(siteKey),
               isTokenAutoRefreshEnabled: true
