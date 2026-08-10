@@ -85,7 +85,7 @@ const recordDailyWriteMetric = async (db) => {
   try {
     const today = new Date().toISOString().split('T')[0];
     const statsRef = doc(db, `artifacts/${appId}/system`, 'daily_stats');
-    
+
     // Increment total writes, or initialize the document if it's a new day
     await setDoc(statsRef, {
       date: today,
@@ -118,31 +118,36 @@ const TabButton = ({ children, onClick, isActive }) => (
 
 // --- Prompt Display Component ---
 const PromptDisplay = ({ label, prompt, sourceTag, sourceId, onSkip }) => (
-  <div className="space-y-1">
-    <div className="flex justify-between items-center">
-      <div className="flex items-center gap-2">
-        <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wider">
+  <div className="space-y-2">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      {/* Label and Badge Container */}
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="block text-xs sm:text-sm font-semibold text-gray-700 uppercase tracking-wider">
           {label}
         </label>
         {sourceTag && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 uppercase tracking-tight">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 uppercase tracking-tight break-all">
             💾 {sourceTag} ({sourceId})
           </span>
         )}
       </div>
+
+      {/* Skip Button */}
       {onSkip && (
         <button
           type="button"
           onClick={onSkip}
-          className="group flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-all bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-md active:scale-95"
+          className="self-end sm:self-auto group flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-all bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-md active:scale-95 shrink-0"
           title="Get a new prompt"
         >
           🔄 Skip
         </button>
       )}
     </div>
-    <div className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl shadow-inner min-h-[72px] flex items-center animate-fadeIn">
-      <p className="text-slate-800 text-base font-medium leading-relaxed">{prompt}</p>
+
+    {/* Prompt Text Box */}
+    <div className="w-full p-3.5 sm:p-4 bg-slate-50 border border-slate-200 rounded-xl shadow-inner min-h-[72px] flex items-center animate-fadeIn">
+      <p className="text-slate-800 text-sm sm:text-base font-medium leading-relaxed">{prompt}</p>
     </div>
   </div>
 );
@@ -519,28 +524,32 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
       </div>
 
       {mode === 'prompt' && (
-        <div className="flex items-center gap-2 bg-blue-50/50 p-2.5 rounded-xl border border-blue-100 max-w-md animate-fadeIn">
-          <span className="text-xs font-bold text-blue-800 uppercase tracking-wider shrink-0">Benchmark Source:</span>
-          <button
-            type="button"
-            onClick={() => setSubSource('tatoeba')}
-            className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${subSource === 'tatoeba'
-              ? 'bg-blue-600 text-white border-blue-600'
-              : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
-              }`}
-          >
-            Tatoeba (Daily Spoken)
-          </button>
-          <button
-            type="button"
-            onClick={() => setSubSource('flores')}
-            className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${subSource === 'flores'
-              ? 'bg-blue-600 text-white border-blue-600'
-              : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
-              }`}
-          >
-            FLORES-200 (Complex/News)
-          </button>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 bg-blue-50/50 p-3 rounded-xl border border-blue-100 w-full animate-fadeIn">
+          <span className="text-xs font-bold text-blue-800 uppercase tracking-wider shrink-0">
+            Benchmark Source:
+          </span>
+          <div className="grid grid-cols-2 gap-1.5 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => setSubSource('tatoeba')}
+              className={`px-2.5 py-1.5 text-xs font-bold rounded-lg border transition-all text-center ${subSource === 'tatoeba'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                  : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
+                }`}
+            >
+              Tatoeba <span className="hidden xs:inline">(Spoken)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSubSource('flores')}
+              className={`px-2.5 py-1.5 text-xs font-bold rounded-lg border transition-all text-center ${subSource === 'flores'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                  : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
+                }`}
+            >
+              FLORES-200 <span className="hidden xs:inline">(News)</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -1405,7 +1414,7 @@ export default function App() {
           benchSnap.docs.forEach(docObj => {
             const data = docObj.data();
             const item = { id: data.sentenceId || docObj.id, text: data.text || data.promptEnglish };
-            
+
             // Convert the source field (or document ID prefix) to lowercase before matching
             const sourceVal = String(data.source || data.benchmarkSource || docObj.id).toLowerCase();
 
@@ -1483,22 +1492,22 @@ export default function App() {
               </span>
               Low-Resource NMT &amp; ASR Corpus Engine
             </div>
-            
+
             <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-blue-900 to-slate-800">
               Burushaski Parallel Corpus Initiative
             </h1>
-            
+
             <p className="text-sm sm:text-base text-slate-600 max-w-xl mx-auto leading-relaxed">
               A crowdsourced data collection and validation engine collecting tri-modal parallel data (Text + Speech) to train baseline Neural Machine Translation and Speech Recognition models.
             </p>
           </div>
-          
+
           <div className="flex justify-center pt-3">
             <ContributionCounter count={contributionCount} />
           </div>
         </header>
 
-        <main className="max-w-2xl w-full mx-auto px-4 py-8 pb-16">
+        <main className="max-w-2xl w-full mx-auto px-2.5 sm:px-4 py-4 sm:py-8 pb-16">
           <div className="bg-slate-200/60 p-1.5 rounded-2xl mb-8 flex overflow-x-auto scrollbar-none gap-1 shadow-inner">
             <TabButton
               onClick={() => setActiveTab('text')}
@@ -1526,7 +1535,7 @@ export default function App() {
             </TabButton>
           </div>
 
-          <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200/80 transition-all duration-300">
+          <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-slate-200/80 transition-all duration-300">
             {activeTab === 'text' && (
               <TextCollectionForm
                 key="text"
@@ -1569,17 +1578,17 @@ export default function App() {
             <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
               Burushaski Language Isolate ML Dataset Hub
             </p>
-            
+
             <div className="flex flex-wrap justify-center items-center gap-4 text-xs font-semibold text-slate-600">
-              <a 
-                href="mailto:contact@yourdomain.com" 
+              <a
+                href="mailto:contact@yourdomain.com"
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 hover:text-blue-600 transition-colors border border-slate-200/60"
               >
                 ✉️ Contact Maintainer
               </a>
-              <a 
-                href="https://github.com/alynhunzai/burushaski-ml-data-app" 
-                target="_blank" 
+              <a
+                href="https://github.com/alynhunzai/burushaski-ml-data-app"
+                target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 hover:text-slate-900 transition-colors border border-slate-200/60"
               >
