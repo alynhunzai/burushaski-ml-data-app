@@ -80,6 +80,22 @@ const getRandomPrompt = (promptArray, lastPrompt) => {
   return newPrompt;
 };
 
+// Helper to increment daily write metrics in Firestore
+const recordDailyWriteMetric = async (db) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const statsRef = doc(db, `artifacts/${appId}/system`, 'daily_stats');
+    
+    // Increment total writes, or initialize the document if it's a new day
+    await setDoc(statsRef, {
+      date: today,
+      writes: increment(1)
+    }, { merge: true });
+  } catch (err) {
+    console.debug('Failed to record system daily write metric:', err);
+  }
+};
+
 // --- Reusable UI Components ---
 
 const TabButton = ({ children, onClick, isActive }) => (
@@ -380,6 +396,7 @@ const AudioPlayer = ({ storage, storagePath }) => {
 
 // --- Main Feature Components ---
 
+// Text Collection Form Component
 const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) => {
   const [mode, setMode] = useState('prompt');
   const [subSource, setSubSource] = useState('tatoeba');
@@ -448,6 +465,8 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
       });
 
       await setDoc(profileDocRef, { count: increment(1) }, { merge: true });
+
+      await recordDailyWriteMetric(db);
 
       setStatus('success');
       setMessage('Your translation was added to the standard corpus!');
@@ -561,6 +580,7 @@ const TextCollectionForm = ({ db, userId, profileDocRef, activeBenchmarkData }) 
   );
 };
 
+// Audio Collection Form Component
 const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchmarkData }) => {
   const [mode, setMode] = useState('prompt');
   const [subSource, setSubSource] = useState('tatoeba');
@@ -703,6 +723,8 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
       });
 
       await setDoc(profileDocRef, { count: increment(1) }, { merge: true });
+
+      await recordDailyWriteMetric(db);
 
       setStatus('success');
       setMessage('Your tri-modal contribution (Text + Audio) has been recorded!');
