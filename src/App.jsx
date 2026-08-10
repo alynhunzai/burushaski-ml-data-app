@@ -100,16 +100,15 @@ const recordDailyWriteMetric = async (db) => {
 
 const TabButton = ({ children, onClick, isActive }) => (
   <button
+    type="button"
     onClick={onClick}
     className={`
-      flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 
-      font-semibold text-sm sm:text-base rounded-t-lg border-b-4
-      transition-all duration-300 ease-in-out transform
-      hover:scale-[1.02] active:scale-[0.98]
-      focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
+      flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5
+      font-bold text-sm rounded-xl transition-all duration-200 ease-out
+      active:scale-95 focus:outline-none
       ${isActive
-        ? 'border-blue-600 text-blue-700 bg-blue-50/30'
-        : 'border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300'
+        ? 'bg-white text-blue-700 shadow-md shadow-slate-200 ring-1 ring-black/5'
+        : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
       }
     `}
   >
@@ -853,21 +852,21 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
           />
         </div>
 
-        <div className="p-6 border-2 border-emerald-200 rounded-2xl bg-emerald-50/30 shadow-sm flex flex-col items-center gap-4 relative transition-all duration-300">
-          <div className="absolute -top-3 left-4 bg-white px-2 text-xs font-bold uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-800 border border-emerald-200">2</span>
+        <div className="p-6 border-2 border-emerald-200/80 rounded-2xl bg-gradient-to-b from-emerald-50/40 to-white shadow-sm flex flex-col items-center gap-4 relative transition-all duration-300">
+          <div className="absolute -top-3 left-4 bg-white px-2.5 py-0.5 rounded-full border border-emerald-200 text-xs font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1.5 shadow-xs">
+            <span className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-800 text-[10px]">2</span>
             Read Aloud
           </div>
 
-          <p className="text-sm font-medium text-slate-700 mt-2 text-center max-w-sm">
+          <p className="text-sm font-medium text-slate-600 mt-2 text-center max-w-sm">
             Ready? Hit record and simply read your Burushaski text from Step 1 aloud.
           </p>
 
-          <div className="relative flex items-center justify-center my-2">
+          <div className="relative flex items-center justify-center my-3">
             {recordingState === 'recording' && (
               <>
-                <div className="absolute w-24 h-24 bg-red-100 rounded-full animate-ripple" />
-                <div className="absolute w-20 h-20 bg-red-200/60 rounded-full animate-ripple [animation-delay:0.8s]" />
+                <div className="absolute w-24 h-24 bg-rose-400/20 rounded-full animate-ping" />
+                <div className="absolute w-20 h-20 bg-rose-500/30 rounded-full animate-pulse" />
               </>
             )}
 
@@ -875,23 +874,17 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
               <button
                 type="button"
                 onClick={startRecording}
-                className="relative z-10 flex items-center justify-center w-16 h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all duration-300 transform hover:scale-110 active:scale-90"
+                className="relative z-10 flex items-center justify-center w-16 h-16 bg-blue-600 hover:bg-blue-700 text-white text-xl rounded-full shadow-lg shadow-blue-500/30 transition-all duration-200 transform hover:scale-105 active:scale-95"
               >
                 🎙️
               </button>
-            )}
-
-            {recordingState === 'permission' && (
-              <div className="relative z-10 flex items-center justify-center w-16 h-16 bg-slate-200 text-slate-500 rounded-full shadow-inner animate-pulse">
-                <div className="w-6 h-6 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
-              </div>
             )}
 
             {recordingState === 'recording' && (
               <button
                 type="button"
                 onClick={stopRecording}
-                className="relative z-10 flex items-center justify-center w-16 h-16 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-lg transition-all duration-300 transform hover:scale-110 active:scale-90"
+                className="relative z-10 flex items-center justify-center w-16 h-16 bg-rose-600 hover:bg-rose-700 text-white text-xl rounded-full shadow-lg shadow-rose-500/30 transition-all duration-200 transform hover:scale-105 active:scale-95"
               >
                 ⏹️
               </button>
@@ -901,26 +894,24 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
               <button
                 type="button"
                 onClick={startRecording}
-                className="relative z-10 flex items-center justify-center w-16 h-16 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg transition-all duration-300 transform hover:scale-110 active:scale-90"
+                className="relative z-10 flex items-center justify-center w-16 h-16 bg-emerald-600 hover:bg-emerald-700 text-white text-xl rounded-full shadow-lg shadow-emerald-500/30 transition-all duration-200 transform hover:scale-105 active:scale-95"
               >
-                🎙️
+                🔄
               </button>
             )}
           </div>
 
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500 animate-fadeIn">
-            {recordingState === 'idle' && "Ready to Record"}
-            {recordingState === 'permission' && "Activating Mic..."}
-            {recordingState === 'recording' && <span className="text-red-600 font-bold">Recording active • Read your text now</span>}
-            {recordingState === 'recorded' && <span className="text-emerald-600 font-bold">Voice Captured Successfully</span>}
-          </span>
-
-          {audioURL && (
-            <div className="w-full mt-2 pt-4 border-t border-emerald-200/60 animate-fadeIn">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Review Audio:</p>
-              <audio controls src={audioURL} className="w-full focus:outline-none rounded-lg" />
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {recordingState === 'recording' && (
+              <span className="h-2 w-2 rounded-full bg-rose-600 animate-pulse" />
+            )}
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              {recordingState === 'idle' && "Ready to Record"}
+              {recordingState === 'permission' && "Activating Mic..."}
+              {recordingState === 'recording' && <span className="text-rose-600 font-bold">Recording Active • Read Your Script</span>}
+              {recordingState === 'recorded' && <span className="text-emerald-600 font-bold">Voice Captured Successfully</span>}
+            </span>
+          </div>
         </div>
 
         <DialectSelector selected={dialect} onChange={setDialect} />
@@ -1481,26 +1472,34 @@ export default function App() {
         }
       `}</style>
 
+      {/* Header */}
       <div className="min-h-screen w-full bg-slate-50/50 text-slate-900 font-sans antialiased">
-        <header className="bg-white border-b border-slate-200/80 px-4 py-8 text-center space-y-4 shadow-xs">
-          <div className="max-w-3xl mx-auto space-y-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-xs font-semibold text-blue-700 uppercase tracking-wider animate-fadeIn">
-              ℹ️ Low-Resource NMT &amp; ASR Corpus Engine
-            </span>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight transition-all duration-300">
+        <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200/80 px-4 py-6 shadow-sm">
+          <div className="max-w-3xl mx-auto text-center space-y-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/60 text-xs font-semibold text-blue-700 uppercase tracking-wider animate-fadeIn">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600"></span>
+              </span>
+              Low-Resource NMT &amp; ASR Corpus Engine
+            </div>
+            
+            <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-blue-900 to-slate-800">
               Burushaski Parallel Corpus Initiative
             </h1>
-            <p className="text-base sm:text-lg text-slate-600 max-w-xl mx-auto leading-relaxed">
-              A crowdsourced data collection and validation engine collecting tri-modal parallel data (Text + Speech) to train baseline Neural Machine Translation and Speech Recognition models for language isolates, such as Burushaski.
+            
+            <p className="text-sm sm:text-base text-slate-600 max-w-xl mx-auto leading-relaxed">
+              A crowdsourced data collection and validation engine collecting tri-modal parallel data (Text + Speech) to train baseline Neural Machine Translation and Speech Recognition models.
             </p>
           </div>
-          <div className="flex justify-center pt-2">
+          
+          <div className="flex justify-center pt-3">
             <ContributionCounter count={contributionCount} />
           </div>
         </header>
 
         <main className="max-w-2xl w-full mx-auto px-4 py-8 pb-16">
-          <div className="flex overflow-x-auto scrollbar-none border-b border-slate-200 mb-6 gap-2">
+          <div className="bg-slate-200/60 p-1.5 rounded-2xl mb-8 flex overflow-x-auto scrollbar-none gap-1 shadow-inner">
             <TabButton
               onClick={() => setActiveTab('text')}
               isActive={activeTab === 'text'}
@@ -1565,10 +1564,33 @@ export default function App() {
           </div>
         </main>
 
-        <footer className="text-center py-8 border-t border-slate-200 bg-white">
-          <p className="text-xs text-slate-400 font-medium">
-            Burushaski-to-English Translation ML Dataset Hub • Secure Open-Source Project • © {new Date().getFullYear()}
-          </p>
+        <footer className="mt-16 border-t border-slate-200 bg-white py-10 px-4">
+          <div className="max-w-2xl mx-auto text-center space-y-4">
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+              Burushaski Language Isolate ML Dataset Hub
+            </p>
+            
+            <div className="flex flex-wrap justify-center items-center gap-4 text-xs font-semibold text-slate-600">
+              <a 
+                href="mailto:contact@yourdomain.com" 
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 hover:text-blue-600 transition-colors border border-slate-200/60"
+              >
+                ✉️ Contact Maintainer
+              </a>
+              <a 
+                href="https://github.com/alynhunzai/burushaski-ml-data-app" 
+                target="_blank" 
+                rel="noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 hover:text-slate-900 transition-colors border border-slate-200/60"
+              >
+                💻 GitHub Repository
+              </a>
+            </div>
+
+            <p className="text-xs text-slate-400 font-medium">
+              Dedicated to the preservation and digital advancement of the Burushaski language. • © {new Date().getFullYear()}
+            </p>
+          </div>
         </footer>
       </div>
     </>
