@@ -1357,20 +1357,34 @@ export default function App() {
         const cacheTime = localStorage.getItem(`${cacheKey}_time`);
 
         if (cachedData && cacheTime && (Date.now() - parseInt(cacheTime) < 86400000)) {
-          setBenchmarkCatalog(JSON.parse(cachedData));
-          return;
+          try {
+            setBenchmarkCatalog(JSON.parse(cachedData));
+            return;
+          } catch {
+            localStorage.removeItem(cacheKey);
+            localStorage.removeItem(`${cacheKey}_time`);
+          }
         }
 
         const benchRef = collection(db, `artifacts/${appId}/public/data/benchmark_sentences`);
         const benchSnap = await getDocs(benchRef);
 
         if (!benchSnap.empty) {
-          const floresList = []; const tatoebaList = [];
+          const floresList = [];
+          const tatoebaList = [];
+
           benchSnap.docs.forEach(docObj => {
             const data = docObj.data();
-            const item = { id: data.sentenceId || docObj.id, text: data.text };
-            if (data.source === 'flores') floresList.push(item);
-            else if (data.source === 'tatoeba') tatoebaList.push(item);
+            const item = { id: data.sentenceId || docObj.id, text: data.text || data.promptEnglish };
+            
+            // Convert the source field (or document ID prefix) to lowercase before matching
+            const sourceVal = String(data.source || data.benchmarkSource || docObj.id).toLowerCase();
+
+            if (sourceVal.includes('flores')) {
+              floresList.push(item);
+            } else if (sourceVal.includes('tatoeba')) {
+              tatoebaList.push(item);
+            }
           });
 
           const newCatalog = {
@@ -1380,10 +1394,13 @@ export default function App() {
 
           setBenchmarkCatalog(newCatalog);
 
+          // Save to local cache
           localStorage.setItem(cacheKey, JSON.stringify(newCatalog));
           localStorage.setItem(`${cacheKey}_time`, Date.now().toString());
         }
-      } catch { console.warn("Using built-in presets."); }
+      } catch (err) {
+        console.warn("Using built-in presets due to query issue:", err);
+      }
     };
     fetchBenchmarkSentences();
   }, [isAuthReady, db, userId]);
