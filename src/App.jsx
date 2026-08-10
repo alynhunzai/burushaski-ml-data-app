@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { FaGithub } from 'react-icons/fa';
 import {
   Check,
   Save,
-  Github,
   Mail,
   FileText,
   ExternalLink
@@ -1594,14 +1594,14 @@ export default function App() {
                 rel="noreferrer"
                 className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 hover:text-slate-900 transition-all border border-slate-200/80 shadow-2xs active:scale-95"
               >
-                <Github className="w-4 h-4 text-slate-700" />
+                <FaGithub className="w-4 h-4 text-slate-700" />
                 <span>GitHub Repository</span>
                 <ExternalLink className="w-3 h-3 text-slate-400" />
               </a>
 
               {/* Email / Contact Icon */}
               <a
-                href="mailto:contact@yourdomain.com"
+                href="mailto:nuraly211@gmail.com"
                 className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-blue-50 hover:text-blue-700 transition-all border border-slate-200/80 shadow-2xs active:scale-95"
               >
                 <Mail className="w-4 h-4 text-blue-600" />
