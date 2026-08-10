@@ -117,6 +117,7 @@ const TabButton = ({ children, onClick, isActive }) => (
   </button>
 );
 
+// --- Prompt Display Component ---
 const PromptDisplay = ({ label, prompt, sourceTag, sourceId, onSkip }) => (
   <div className="space-y-1">
     <div className="flex justify-between items-center">
@@ -164,6 +165,7 @@ const StyledTextarea = ({ id, label, value, onChange, placeholder, rows = 4 }) =
   </div>
 );
 
+// --- Dialect Selector Component ---
 const DialectSelector = ({ selected, onChange }) => (
   <fieldset className="space-y-2">
     <legend className="block text-sm font-semibold text-gray-700 uppercase tracking-wider mb-1">
@@ -197,6 +199,7 @@ const DialectSelector = ({ selected, onChange }) => (
   </fieldset>
 );
 
+// --- Submit Button Component ---
 const SubmitButton = ({ status, children, icon: IconComponent = Save }) => (
   <button
     type="submit"
@@ -220,6 +223,7 @@ const SubmitButton = ({ status, children, icon: IconComponent = Save }) => (
   </button>
 );
 
+// --- Status Message Component ---
 const StatusMessage = ({ status, message }) => {
   if (status === 'idle' || !message) return null;
 
@@ -239,6 +243,7 @@ const StatusMessage = ({ status, message }) => {
   );
 };
 
+// --- Global Loader Component ---
 const GlobalLoader = () => (
   <div className="min-h-screen w-full flex flex-col justify-center items-center bg-gradient-to-b from-blue-50 to-white text-gray-900 font-sans">
     <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -249,6 +254,7 @@ const GlobalLoader = () => (
   </div>
 );
 
+// --- Quota Reached Screen Component ---
 const QuotaReachedScreen = () => (
   <div className="min-h-screen w-full flex flex-col justify-center items-center bg-slate-50 px-4 py-8 font-sans text-center">
     <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-slate-200 p-8 space-y-6 animate-popIn">
@@ -266,6 +272,7 @@ const QuotaReachedScreen = () => (
   </div>
 );
 
+// --- Connection Diagnostic Screen Component ---
 const ConnectionDiagnosticScreen = ({ errorMsg }) => {
   const isUsingMockKey = firebaseConfig.apiKey === "MOCK_API_KEY_FOR_PREVIEW_MODE";
 
@@ -329,6 +336,7 @@ const ConnectionDiagnosticScreen = ({ errorMsg }) => {
   );
 };
 
+// --- Contribution Counter Component ---
 const ContributionCounter = ({ count }) => {
   const [animate, setAnimate] = useState(false);
 
@@ -350,6 +358,7 @@ const ContributionCounter = ({ count }) => {
   );
 };
 
+// --- Audio Player Component ---
 const AudioPlayer = ({ storage, storagePath }) => {
   const [audioUrl, setAudioUrl] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -924,6 +933,7 @@ const AudioCollectionForm = ({ db, storage, userId, profileDocRef, activeBenchma
   );
 };
 
+// Validation Form Component
 const ValidationForm = ({ db, storage, userId }) => {
   const [contribution, setContribution] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -1063,6 +1073,8 @@ const ValidationForm = ({ db, storage, userId }) => {
         }
       );
 
+      await recordDailyWriteMetric(db);
+
       setMessage("Vote recorded. Updating dataset...");
 
       setTimeout(fetchContribution, 1500);
@@ -1187,7 +1199,8 @@ const StyledSelect = ({ id, label, value, onChange, children }) => (
   </div>
 );
 
-const ProfileForm = ({ profileDocRef }) => {
+// Profile Form Component
+const ProfileForm = ({ db, profileDocRef }) => {
   const [ageRange, setAgeRange] = useState('');
   const [gender, setGender] = useState('');
   const [primaryRegion, setPrimaryRegion] = useState('');
@@ -1226,6 +1239,8 @@ const ProfileForm = ({ profileDocRef }) => {
         gender,
         primaryRegion
       }, { merge: true });
+
+      if (db) await recordDailyWriteMetric(db);
 
       setStatus('success');
       setMessage('Demographic metadata locked in. Appreciated!');
@@ -1284,6 +1299,7 @@ const ProfileForm = ({ profileDocRef }) => {
   );
 };
 
+// Main Application Component
 export default function App() {
   const [activeTab, setActiveTab] = useState('text');
   const [userId, setUserId] = useState(null);
@@ -1542,6 +1558,7 @@ export default function App() {
             {activeTab === 'profile' && (
               <ProfileForm
                 key="profile"
+                db={db}
                 profileDocRef={profileDocRef}
               />
             )}
