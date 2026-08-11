@@ -3,7 +3,6 @@ import { FaGithub } from 'react-icons/fa';
 import {
   Check,
   Save,
-  Mail,
   FileText,
   ExternalLink
 } from 'lucide-react';
