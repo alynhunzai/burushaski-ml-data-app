@@ -36,3 +36,7 @@ serviceAccountKey.json
 
 # Old code snippets
 code-snippets.txt
+/src/components
+/src/config
+/src/context
+/src/utils
