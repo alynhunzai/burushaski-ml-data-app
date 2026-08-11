@@ -1599,15 +1599,6 @@ export default function App() {
                 <ExternalLink className="w-3 h-3 text-slate-400" />
               </a>
 
-              {/* Email / Contact Icon */}
-              <a
-                href="mailto:nuraly211@gmail.com"
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-blue-50 hover:text-blue-700 transition-all border border-slate-200/80 shadow-2xs active:scale-95"
-              >
-                <Mail className="w-4 h-4 text-blue-600" />
-                <span>Contact Maintainer</span>
-              </a>
-
               {/* Issues / Documentation Icon */}
               <a
                 href="https://github.com/alynhunzai/burushaski-ml-data-app/issues"
