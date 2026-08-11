@@ -1607,6 +1607,7 @@ export default function App() {
               >
                 <FileText className="w-4 h-4 text-emerald-600" />
                 <span>Report Issue</span>
+                <ExternalLink className="w-3 h-3 text-slate-400" />
               </a>
 
             </div>
