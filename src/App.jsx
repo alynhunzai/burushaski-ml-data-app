@@ -179,12 +179,12 @@ const DialectSelector = ({ selected, onChange }) => (
     <legend className="block text-sm font-semibold text-gray-700 uppercase tracking-wider mb-1">
       Burushaski Dialect
     </legend>
-    <div className="grid grid-cols-2 gap-4">
-      {['Hunza', 'Nagar'].map((dialect) => (
+    <div className="grid grid-cols-3 gap-2 sm:gap-4">
+      {['Hunza', 'Nagar', 'Yasin'].map((dialect) => (
         <label
           key={dialect}
           className={`
-            flex items-center gap-3 p-4 border rounded-xl cursor-pointer select-none
+            flex items-center justify-center gap-2 p-3 sm:p-4 border rounded-xl cursor-pointer select-none
             transition-all duration-300 ease-out shadow-xs transform hover:-translate-y-0.5 active:translate-y-0
             ${selected === dialect.toLowerCase()
               ? 'bg-blue-50 border-blue-500 ring-4 ring-blue-100/50 scale-[1.01]'
@@ -198,9 +198,9 @@ const DialectSelector = ({ selected, onChange }) => (
             value={dialect.toLowerCase()}
             checked={selected === dialect.toLowerCase()}
             onChange={(e) => onChange(e.target.value)}
-            className="h-4.5 w-4.5 text-blue-600 focus:ring-blue-500 border-slate-300 accent-blue-600"
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 accent-blue-600 shrink-0"
           />
-          <span className="font-semibold text-slate-800 text-sm sm:text-base">{dialect}</span>
+          <span className="font-semibold text-slate-800 text-xs sm:text-base">{dialect}</span>
         </label>
       ))}
     </div>
@@ -214,7 +214,7 @@ const SubmitButton = ({ status, children, icon: IconComponent = Save }) => (
     disabled={status === 'submitting'}
     className={`
       w-full flex items-center justify-center gap-2 px-6 py-3.5
-      font-bold text-white rounded-xl shadow-md
+      font-bold text-white rounded-full shadow-md
       transition-all duration-300 ease-in-out
       transform hover:scale-[1.01] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99]
       focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-200
@@ -1169,15 +1169,15 @@ const ValidationForm = ({ db, storage, userId }) => {
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <button disabled={voted} onClick={() => handleVote('correct')} className="p-2 border rounded hover:bg-slate-50">
+            <button disabled={voted} onClick={() => handleVote('correct')} className="p-2 border rounded-full hover:bg-slate-50">
               👍 Correct
             </button>
 
-            <button disabled={voted} onClick={() => handleVote('incorrect')} className="p-2 border rounded hover:bg-slate-50">
+            <button disabled={voted} onClick={() => handleVote('incorrect')} className="p-2 border rounded-full hover:bg-slate-50">
               👎 Incorrect
             </button>
 
-            <button disabled={voted} onClick={() => handleVote('unsure')} className="p-2 border rounded hover:bg-slate-50">
+            <button disabled={voted} onClick={() => handleVote('unsure')} className="p-2 border rounded-full hover:bg-slate-50">
               🤔 Unsure
             </button>
           </div>
@@ -1196,7 +1196,7 @@ const StyledSelect = ({ id, label, value, onChange, children }) => (
       id={id}
       value={value}
       onChange={onChange}
-      className="w-full p-3.5 border border-slate-300 rounded-xl shadow-xs focus:ring-4 focus:ring-blue-100 focus:border-blue-500 hover:border-slate-400 transition-all duration-200 bg-white text-slate-800 font-medium"
+      className="w-full p-3.5 border border-slate-300 rounded-full shadow-xs focus:ring-4 focus:ring-blue-100 focus:border-blue-500 hover:border-slate-400 transition-all duration-200 bg-white text-slate-800 font-medium"
     >
       {children}
     </select>
@@ -1290,6 +1290,7 @@ const ProfileForm = ({ db, profileDocRef }) => {
           <option value="">Choose to disclose or skip...</option>
           <option value="hunza">Hunza Valley</option>
           <option value="nagar">Nagar Valley</option>
+          <option value="nagar">Yasin Valley</option>
           <option value="other">Other Outlying Region</option>
         </StyledSelect>
 
@@ -1591,7 +1592,7 @@ export default function App() {
                 href="https://github.com/alynhunzai/burushaski-ml-data-app"
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 hover:text-slate-900 transition-all border border-slate-200/80 shadow-2xs active:scale-95"
+                className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-slate-50 hover:bg-slate-100 hover:text-slate-900 transition-all border border-slate-200/80 shadow-2xs active:scale-95"
               >
                 <FaGithub className="w-4 h-4 text-slate-700" />
                 <span>GitHub Repository</span>
@@ -1603,7 +1604,7 @@ export default function App() {
                 href="https://github.com/alynhunzai/burushaski-ml-data-app/issues"
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:text-emerald-700 transition-all border border-slate-200/80 shadow-2xs active:scale-95"
+                className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-slate-50 hover:bg-emerald-50 hover:text-emerald-700 transition-all border border-slate-200/80 shadow-2xs active:scale-95"
               >
                 <FileText className="w-4 h-4 text-emerald-600" />
                 <span>Report Issue</span>
